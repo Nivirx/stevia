@@ -1,0 +1,4 @@
+label: dos
+unit: sectors
+
+start=        2048, type=b, bootable

@@ -1,0 +1,35 @@
+Partition 1 offset = LBA 0x800
+                   = 0x100000
+bsSectorSize = 512
+
+first_fat_sector = bsResSector
+               = 32 => (32*512) = 0x4000
+               = 0x100000 + 0x4000
+               = 0x104000
+               
+total_fat_sectors = fat_sectors * number_of_FATs
+                  = 2001 * 2
+                  = 4002
+
+total_fat_size = total_fat_sectors * bsSectorSize
+              = 0x1F4400
+              
+first_data_sector = FatStartSector + FatAreaSize
+                  = 0x104000 + 0x1F4400
+                  = 0x2F8400
+                  
+FAT table look up
+
+    if the cluster we got from the table entry was cluster 354
+    fat_sector = 354 / 128
+               = 2
+    fat_entry  = 354 mod 128
+               = 98
+               
+    so we load the 3rd (indexed from 0) fat table sector and read the 98th entry
+    for the cluster chain.
+    
+    // bad fake code below
+    fat_table_offset = (first_fat_sector + 2) * 512
+    fat_table = *(fat_table_offset)
+    disk_read(fat_table[98])

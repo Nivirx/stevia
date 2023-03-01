@@ -1,0 +1,5 @@
+out/*
+build/*
+*.img
+*.elf
+bx_enh_dbg.ini
