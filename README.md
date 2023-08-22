@@ -10,6 +10,7 @@ This is a hobby project that aims to create a simple and lightweight operating s
 - (big maybe) micropython or some other language, cross compiling, etc...
 
 ## Why?
+
 I enjoy bare metal programing and I have an old Dell system with a Pentium 3, I did this mostly to learn how to write a legacy style bootloader (I am also kinda working on a UEFI bootloader/utility as well!)
 
 ## Installation
@@ -50,5 +51,35 @@ This file contains the code for a second-stage boot loader that loads additional
 ### miniboot32/BOOT_386.s
 
 This file contains the code for a 32-bit binary that can be loaded and ran with stevia as a mini demo. It is written in Assembly.[^note]
+
+### scripts/create-disk.sh
+
+This script creates a disk image file for stevia. The disk image file can be used to boot stevia on an emulator or a real machine.
+
+#### Requirements
+
+- Bash shell
+- Root privileges
+- dd utility
+- sfdisk utility (for Linux) or hdiutil & util-linux utility (for macOS, util-linux is needed for sfdisk because hdiutil only creates hybrid disks on newer versions afaik)
+- newfs_msdos utility (for macOS)
+- mkfs.vfat utility (for Linux)
+
+#### Usage
+
+Run the script as root (or just allow the make script to do its business):
+
+```bash
+sudo ./create_disk_image.sh
+```
+
+The script will create a disk image file named `disk.img` in the current directory. The disk image file will have the following characteristics:
+
+- Size: 128 MiB
+- Partition table: DOS
+- Partition 1: FAT32, bootable, starts at sector 2048, contains the boot32 boot test file (`BOOT_386.bin`)
+- Boot code: MBR (`mbr.bin`), VBR (`vbr.bin`), stage2 (sectors 1-63) (`stage2.bin`)
+
+The script will also copy the necessary files from the `build` directory to the disk image file. If the files are not found, the script will exit with an error.
 
 [^note]: **Note:** Please note that the assembly code is strictly targeting the Pentium 3 Katmai uArch, but it might run elsewhere. Your mileage may vary.
