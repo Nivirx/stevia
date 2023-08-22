@@ -27,9 +27,7 @@ To exit the emulator, press `Ctrl+C` in the terminal where you launched Bochs.
 
 ## License
 
-This project is licensed under the MIT License and the GPL-3.0 License. See the [COPYING](^1^) and [LICENSE.md](^2^) files for details.
-
-Here are possible README.md files for each of your requested files:
+This project is licensed under the MIT License. See the [LICENSE.md](^2^) file for details.
 
 ### mbr/mbr.s
 
