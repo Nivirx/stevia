@@ -9,10 +9,14 @@ This is a hobby project that aims to create a simple and lightweight operating s
 - A calculator that can perform arithmetic operations
 - (big maybe) micropython or some other language, cross compiling, etc...
 
+## Why?
+I enjoy bare metal programing and I have an old Dell system with a Pentium 3, I did this mostly to learn how to write a legacy style bootloader (I am also kinda working on a UEFI bootloader/utility as well!)
+
 ## Installation
 
 To build and run this project, you need to have the following tools installed:
 
+- A host system running Linux, macOS (should work 🤷‍♀️), or Windows 11 with WSL2/WSLg
 - GNU Binutils
 - GNU GCC
 - GNU Make
@@ -24,6 +28,8 @@ To build the project, run `make` in the root directory. This will generate a flo
 To run the project, run `bochs -f bochsrc.txt` in the root directory. This will launch the Bochs emulator and load the floppy disk image. You should see the boot loader message, followed by the kernel message, and then the shell prompt.
 
 To exit the emulator, press `Ctrl+C` in the terminal where you launched Bochs.
+
+To run the project on real hardware I use a SD card to IDE interface for my test system which is a ~700Mhz P3 with 256 MB of ram. You will need to write the 'stevia.img' to the disk with 'dd'. On real hardware you may encounter issues that are not accounted for since most of the development happens on bochs, please report any issues you encounter.
 
 ## License
 
