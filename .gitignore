@@ -3,3 +3,4 @@ build/*
 *.img
 *.elf
 bx_enh_dbg.ini
+stevia-log
