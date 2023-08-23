@@ -196,6 +196,6 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     fi
 else
         # Unknown.
-        echo "Unknown OS type! Supported build hosts systems are GNU/Linux and macOS."
+        echo "Unknown OS type! Supported build hosts systems are GNU/Linux (WSL) and macOS."
         exit 1
 fi
