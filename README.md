@@ -1,13 +1,6 @@
 # stevia
 
-This is a hobby project that aims to create a simple and lightweight operating system kernel. It is written in Assembly and C, and uses the GNU toolchain and Bochs emulator. The project features (or is hoping to feature):
-
-- A boot loader that loads the kernel from a floppy disk image
-- A kernel that implements basic functions, such as printing messages, handling interrupts, and managing memory
-- A shell that allows user input and execution of commands
-- A simple text editor that can create and edit files
-- A calculator that can perform arithmetic operations
-- (big maybe) micropython or some other language, cross compiling, etc...
+This is a hobby project that aims to create a simple and lightweight operating system. It is written in Assembly and C, and uses the GNU toolchain and Bochs emulator.
 
 ## Why?
 
