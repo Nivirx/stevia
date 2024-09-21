@@ -47,7 +47,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if [ -e $mbr_file ] && [ -e $vbr_file ]; then
         # get next loop device and mount it
         ld=$(losetup -f)
-        losetup -b 512 $ld disk.img
+        losetup -P -b 512 $ld disk.img
 
         # create a DOS disk, with 1 FAT32 partition that is bootable, part1 starts at sector 2048
         sfdisk $ld < scripts/loop_setup.sfdisk
