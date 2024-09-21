@@ -4,3 +4,4 @@ build/*
 *.elf
 bx_enh_dbg.ini
 stevia-log
+.vscode/
