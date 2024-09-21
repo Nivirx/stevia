@@ -94,18 +94,17 @@ error:
     mov dx, STEVIA_DEBUG_OK
     cmp ax, dx
     jge error.debug_err
+    mov dh, 0x4F                ; color 0x4F is white text/red background
+    jmp error.print
+.debug_err:
+    mov dh, 0x5F                ; debug case is white text/purple background
 
     ; the characters are two bytes in the order of 0xb8000: byte c, byte attribute
     ; since x86 is le, we store the attribute in the MSB of dx
-    mov dh, 0x4F                ; color 0x4F is white text/red background
+.print:
     mov dl, al
     mov word [fs:0x0000], dx
     jmp error.stop
-
-.debug_err:
-    mov dh, 0x5F                ; debug case is white text/purple background
-    mov dl, al
-    mov word [fs:0x0000], dx
 
 .stop:
     hlt
