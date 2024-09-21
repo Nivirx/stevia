@@ -159,6 +159,7 @@ main:
 
     ; jump to entry point
     ; TODO
+    ERROR STEVIA_DEBUG_HALT
 
 hcf:
     hlt
