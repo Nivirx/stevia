@@ -34,11 +34,7 @@ init:
     
     mov ss, ax                      ; Set Stack Segment to 0
     mov sp, STACK_START             
-
-    mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
-    mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)
-    mov di, MBR_ENTRY               ; New MBR Address (our new relocation address)
-    rep movsw                       ; copy 512 bytes from 0x0000:7c00 to 0x0000:0600
+    sti
 
     jmp 0:main
     nop
@@ -49,7 +45,6 @@ init:
 %include "errors.inc"
 
 main:
-    sti
     mov [boot_drive], dl            ; BIOS passes drive number in DL
 
     .check_disk:
