@@ -48,7 +48,7 @@
 %define VBR_ERROR_RESERVED_w         'w'
 %define VBR_ERROR_RESERVED_x         'x'
 
-; 26 errors, 8 in use
+; 22 errors, 8 in use
 %define STAGE2_A20_FAILED            'A'
 %define STAGE2_SIGNATURE_MISSING     'B'
 %define STAGE2_MM_E820_NO_SUPPORT    'C'
@@ -71,27 +71,39 @@
 %define STAGE2_ERROR_RESERVED_T      'T'
 %define STAGE2_ERROR_RESERVED_U      'U'
 %define STAGE2_ERROR_RESERVED_V      'V'
-%define STAGE2_ERROR_RESERVED_W      'W'
-%define STAGE2_ERROR_RESERVED_X      'X'
-%define STAGE2_ERROR_RESERVED_Y      'Y'
-%define STAGE2_ERROR_RESERVED_Z      'Z'
+
+; for development only, specific errors should be above.
+%define STEVIA_DEBUG_OK      'W'
+%define STEVIA_DEBUG_ERR      'X'
+%define STEVIA_DEBUG_UNIMPLEMENTED      'Y'
+%define STEVIA_DEBUG_HALT      'Z'
 
 
 %macro ERROR 1
+    xor ax, ax
     mov al, %1
     jmp error
 %endmacro
 
 ; pass error as ascii character in al, errors a-zA-Z or 0-9
 error:
-    ; color 0x4F is white on red
     ; fs = 0xb800 => fs:0x0000 = 0xb8000
     mov dx, 0xB800
     mov fs, dx
 
+    mov dx, STEVIA_DEBUG_OK
+    cmp ax, dx
+    jge error.debug_err
+
     ; the characters are two bytes in the order of 0xb8000: byte c, byte attribute
     ; since x86 is le, we store the attribute in the MSB of dx
-    mov dh, 0x4F
+    mov dh, 0x4F                ; color 0x4F is white text/red background
+    mov dl, al
+    mov word [fs:0x0000], dx
+    jmp error.stop
+
+.debug_err:
+    mov dh, 0x5F                ; debug case is white text/purple background
     mov dl, al
     mov word [fs:0x0000], dx
 
