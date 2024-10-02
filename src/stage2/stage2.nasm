@@ -24,17 +24,6 @@
 jmp short init
 nop
 
-; Unless noted otherwise, functions will be the standard x86 cdecl used in GCC
-
-; In cdecl, subroutine arguments are passed on the stack. 
-; Integer values and memory addresses are returned in the EAX register,
-; floating point values in the ST0 x87 register. 
-; Registers EAX, ECX, and EDX are caller-saved, 
-; and the rest are callee-saved. 
-; The x87 floating point registers ST0 to ST7 must be empty (popped or freed) 
-; when calling a new function, and ST1 to ST7 must be empty on exiting a function. 
-; ST0 must also be empty when not used for returning a value.
-
 ; boot drive in dl
 ; active partition offset in si
 %include "entry.inc"
