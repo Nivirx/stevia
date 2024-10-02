@@ -25,17 +25,9 @@
 jmp short init
 nop
 
-bpb_start:
-; fill BPB area with 0x00 since we skip writing this part to disk
-; but we need it for the 'jmp short entry; nop' above
-times 33 db 0x00
-
-ebpb_start:
-; fill BPB area with 0x00 since we skip writing this part to disk
-; but we need it for the 'jmp short entry; nop' above
-times 54 db 0x00
-
+%include "fat32/bpb_reserve_area.inc"
 %include "entry.inc"
+
 init:
     cli                         ; We do not want to be interrupted
 
@@ -48,25 +40,22 @@ init:
     mov bp, sp                  ; base ptr = stack ptr
 
     mov bx, VBR_ENTRY           ; move BP to the new start of the initial boot sector
+    sti                         ; all done with inital setup and relocation, reenable interupts
 
     jmp 0:main                  ; fix up cs:ip just in case and jump to relocated code
 
 %include "config.inc"
-%include "errors.inc"
 %include "memory.inc"
-
 %include "partition_table.inc"
+%include "errors.inc"
 
 %include "fat32/bpb.inc"
 
-
-
 main:
-    sti                         ; all done with inital setup and relocation, reenable interupts
     mov [bsDriveNumber], dl     ; BIOS passes drive number in DL
     mov [partition_offset], si  ; save passed partition entry offset
 
-.check_FAT_size:
+.check_FAT_size:                     ; we only support a very specific setup of FAT32
     cmp dword [bsSectorHuge], 0      ; SectorsHuge will not be set if FAT12/16
     ja main.load_stage2
 
