@@ -72,44 +72,40 @@ main:
     mov ax, 0xBEEF
     push ax             ; mark top of stack for debuging
 
-    push bp
-    mov bp, sp
     lea ax, [HelloPrompt_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
 
     ; enable A20 gate
-    push bp
-    mov bp, sp
     call EnableA20
+    
     lea ax, [A20_Enabled_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
 
     ; get system memory map
-    push bp
-    mov bp, sp
     call GetMemoryMap
+
     lea ax, [MemoryMap_OK_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
 
     ; enter unreal mode
-    push bp
-    mov bp, sp
     call EnterUnrealMode
+
     lea ax, [UnrealMode_OK_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
 
+
+    ; FAT Driver setup
     push bp
     mov bp, sp
     call InitFATDriver
-    leave
 
     ;
     ; Find first cluster of bootable file
@@ -117,29 +113,26 @@ main:
     push bp
     mov bp, sp
     call SearchFATDIR
-    leave
-    PUSH_DWORD_EAX      ; save return value of function
+    
+    PUSH_DWORD_EAX      ; save return value of function as a 32-bit value on a 16-bit aligned stack
 
-    push bp
-    mov bp, sp
+
     lea ax, [FileFound_OK_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
 
     POP_DWORD_EAX       ; return value of SearchFATDIR
     push bp
     mov bp, sp
     PUSH_DWORD_EAX
     call PrintDWORD
-    leave
+    
 
-    push bp
-    mov bp, sp
     lea ax, [NewLine_cstr]
     push ax
     call PrintString
-    leave
+    add sp, 0x2
     
     ; TODO
 
@@ -544,11 +537,14 @@ read_disk_raw:
 ; Prints a C-Style string (null terminated) using BIOS vga teletype call
 ; void PrintString(char* buf)
 PrintString:
+    push bp
+    mov bp, sp
+
     push si
     push di
     push bx
 
-    mov di, [bp - 2]    ; first arg is char* 
+    mov di, [bp + 2]    ; first arg is char* 
 .str_len:
 
     xor cx, cx         ; ECX = 0
@@ -562,7 +558,7 @@ PrintString:
     dec cx             ; CX contains the length of the string - nul byte at end
 
 .print:
-    mov si, [bp - 2]            ; source string
+    mov si, [bp + 2]            ; source string
 .print_L0:
     push bp
     mov bp, sp
@@ -582,6 +578,9 @@ PrintString:
     pop bx
     pop di
     pop si
+
+    mov sp, bp
+    pop bp
     ret                         ; Return from procedure
 
 ; Prints a single character
