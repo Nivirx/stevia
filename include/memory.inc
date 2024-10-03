@@ -113,6 +113,85 @@ endstruc
 ; Address Range Descriptor Structure
 ;
 ; Offset in Bytes		Name		Description
+;	0	    BaseAddrLow		Low 32 Bits of Base Address
+;	4	    BaseAddrHigh	High 32 Bits of Base Address
+;	8	    LengthLow		Low 32 Bits of Length in Bytes
+;	12	    LengthHigh		High 32 Bits of Length in Bytes
+;	16	    Type		Address type of  this range.
+; Address Range Descriptor Structure
+;
+; Offset in Bytes		Name		Description
+;	0	    BaseAddrLow		Low 32 Bits of Base Address
+;	4	    BaseAddrHigh	High 32 Bits of Base Address
+;	8	    LengthLow		Low 32 Bits of Length in Bytes
+;	12	    LengthHigh		High 32 Bits of Length in Bytes
+;	16	    Type		Address type of  this range.
+; Input:
+;
+;	EAX	Function Code	E820h
+;	EBX	Continuation	Contains the "continuation value" to get the
+;				next run of physical memory.  This is the
+;				value returned by a previous call to this
+;				routine.  If this is the first call, EBX
+;				must contain zero.
+;	ES:DI	Buffer Pointer	Pointer to an  Address Range Descriptor
+;				structure which the BIOS is to fill in.
+;	ECX	Buffer Size	The length in bytes of the structure passed
+;				to the BIOS.  The BIOS will fill in at most
+;				ECX bytes of the structure or however much
+;				of the structure the BIOS implements.  The
+;				minimum size which must be supported by both
+;				the BIOS and the caller is 20 bytes.  Future
+;				implementations may extend this structure.
+;	EDX	Signature	'SMAP' -  Used by the BIOS to verify the
+;				caller is requesting the system map
+;				information to be returned in ES:DI.
+;
+; Output:
+;
+;	CF	Carry Flag	Non-Carry - indicates no error
+;	EAX	Signature	'SMAP' - Signature to verify correct BIOS
+;				revision.
+;	ES:DI	Buffer Pointer	Returned Address Range Descriptor pointer.
+;				Same value as on input.
+;	ECX	Buffer Size	Number of bytes returned by the BIOS in the
+;				address range descriptor.  The minimum size
+;				structure returned by the BIOS is 20 bytes.
+;	EBX	Continuation	Contains the continuation value to get the
+;				next address descriptor.  The actual
+;				significance of the continuation value is up
+;				to the discretion of the BIOS.  The caller
+;				must pass the continuation value unchanged
+;				as input to the next iteration of the E820
+;				call in order to get the next Address Range
+;				Descriptor.  A return value of zero means that
+;				this is the last descriptor
+;
+; Address Range Descriptor Structure
+;
+; Offset in Bytes		Name		Description
+;	0	    BaseAddrLow		Low 32 Bits of Base Address
+;	4	    BaseAddrHigh	High 32 Bits of Base Address
+;	8	    LengthLow		Low 32 Bits of Length in Bytes
+;	12	    LengthHigh		High 32 Bits of Length in Bytes
+;	16	    Type		Address type of  this range.
+;
+; The BaseAddrLow and BaseAddrHigh together are the 64 bit BaseAddress of this range.
+; The BaseAddress is the physical address of the start of the range being specified.
+;
+; The LengthLow and LengthHigh together are the 64 bit Length of this range.
+; The Length is the physical contiguous length in bytes of a range being specified.
+;
+; The Type field describes the usage of the described address range as defined in the table below.
+
+; Value	       Pneumonic		           Description
+;   1	    AddressRangeMemory	    This run is available RAM usable by the operating system.
+;   2	    AddressRangeReserved	This run of addresses is in use or reserved by the system, and must not be used by the operating system.
+; Other	    Undefined		        Undefined - Reserved for future use.
+
+; Address Range Descriptor Structure
+;
+; Offset in Bytes		Name		Description
 ;	0	    BaseAddrLow		u32 - Low 32 Bits of Base Address
 ;	4	    BaseAddrHigh	u32 - High 32 Bits of Base Address
 ;	8	    LengthLow		u32 - Low 32 Bits of Length in Bytes
