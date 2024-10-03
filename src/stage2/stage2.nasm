@@ -86,8 +86,6 @@ main:
     call PrintString
     add sp, 0x2
 
-    ERROR STEVIA_DEBUG_HALT
-
     ; get system memory map
     call GetMemoryMap
 
@@ -95,6 +93,8 @@ main:
     push ax
     call PrintString
     add sp, 0x2
+
+    ERROR STEVIA_DEBUG_HALT
 
     ; enter unreal mode
     call EnterUnrealMode
@@ -527,10 +527,10 @@ read_disk_raw:
     mov ah, 0x42
     mov dl, byte [fat32_ebpb + FAT32_ebpb_t.drive_number_8]
     int 0x13
-    jnc read_disk_raw.endf
+    jnc read_disk_raw.endp
     ERROR STAGE2_MBR_DISK_READ_ERROR
 
-.endf:
+.endp:
     pop si
     ret
 
@@ -549,7 +549,6 @@ PrintString:
 
     not cx             ; the inverse of a neg number = abs(x) - 1
     dec cx             ; CX contains the length of the string - nul byte at end
-
 .print:
     mov si, [bp + 4]            ; source string
 .print_L0:
@@ -571,7 +570,7 @@ PrintString:
 ; void PrintCharacter(char c);
 PrintCharacter:
     __CDECL16_ENTRY
-.func_bios:
+.func:
     mov ax, [bp + 4] ; c
     mov dx, 0x00ff
     and ax, dx
@@ -579,7 +578,6 @@ PrintCharacter:
     mov ah, 0x0E                ; INT 0x10, AH=0x0E call
     mov bx, 0x0007              ; BH = page no. BL =Text attribute 0x07 is lightgrey font on black background
     int 0x10                    ; call video interrupt
-
 .endp:
     __CDECL16_EXIT
     ret
@@ -658,6 +656,7 @@ SetTextMode:
     popf
     __CDECL16_EXIT
     ret
+
 ; See memory.inc for a brief description of E820 mmap function
 GetMemoryMap:
     __CDECL16_ENTRY
