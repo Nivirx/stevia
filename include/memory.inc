@@ -244,9 +244,9 @@ endstruc
 ;
 ; first argument == starting offset from bp for lower 16bits
 %macro MOV_DWORD_EAX 1
-    mov ax, [bp-(%1+2)]
+    mov ax, [bp+(%1+2)]
     shl eax, 16
-    mov ax, [bp-%1]
+    mov ax, [bp+%1]
     ; eax contains dword from stack
 %endmacro
 
