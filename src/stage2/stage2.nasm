@@ -78,8 +78,6 @@ main:
     call PrintString
     add sp, 0x2
 
-    ERROR STEVIA_DEBUG_HALT
-
     ; enable A20 gate
     call EnableA20
     
@@ -87,6 +85,8 @@ main:
     push ax
     call PrintString
     add sp, 0x2
+
+    ERROR STEVIA_DEBUG_HALT
 
     ; get system memory map
     call GetMemoryMap
@@ -881,17 +881,12 @@ disable_cursor:
 ;
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnableA20:
-    push bx
-    push cx
-    ; end prolog
+    __CDECL16_ENTRY
 
-    ; checked this way since this will /always/ work
-.a20_check:
-    pushf
     push ds
     push es
-    push di
-    push si
+    pushf                       ; save data and extra segment since we touch them and save flags
+.a20_check:
     cli
 
     xor ax, ax
@@ -924,13 +919,7 @@ EnableA20:
     je EnableA20.end_check
     mov ax, 1                   ; return 1 if es:di != ds:si (A20 is enabled)
 .end_check:
-    pop si
-    pop di
-    pop es
-    pop ds
-    popf
     sti
-
     cmp ax, 1
     je EnableA20.endp         ; A20 is already enabled
 
@@ -960,9 +949,10 @@ EnableA20:
     out 0x92, al                ; enable A20
     jmp EnableA20.a20_check
 .endp:
-    pop cx
-    pop bx
-
+    popf
+    pop es
+    pop ds
+    __CDECL16_EXIT
     ret
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
