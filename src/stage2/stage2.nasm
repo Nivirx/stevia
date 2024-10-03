@@ -54,6 +54,7 @@ init:
 %include "errors.inc"
 %include "memory.inc"
 %include "partition_table.inc"
+%include "cdecl16.inc"
 
 %include "fat32/bpb.inc"
 %include "fat32/fat32_structures.inc"
@@ -136,13 +137,6 @@ main:
     call PrintString
     add sp, 0x2
     
-    ; TODO
-
-    ; read elf information and place the sections in the file at the correct location
-    ; TODO
-
-    ; jump to entry point
-    ; TODO
     ERROR STEVIA_DEBUG_HALT
 
 hcf:
@@ -155,7 +149,7 @@ hcf:
 ;
 ; ###############
 
-
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 InitFATDriver:
     push bx
 
@@ -200,6 +194,7 @@ InitFATDriver:
     pop bx
     ret
 
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; load a file to the high memory buffer for the elf parser
 ; this involves using the low memory buffer for the bios call and moving the file sector by sector to high memory
 ;
@@ -326,7 +321,7 @@ SearchFATDIR:
     pop di
     ret
 
-
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; uint32_t NextCluster(uint32_t active_cluster);
 ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
 ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
@@ -403,6 +398,7 @@ NextCluster:
     pop si
     ret
 
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; uint32_t ClusterToLBA(uint32_t cluster)
 ClusterToLBA:
     push si
@@ -419,6 +415,7 @@ ClusterToLBA:
     pop si
     ret
 
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ReadFATCluster:
     push si
@@ -494,6 +491,7 @@ ReadFATCluster:
 ; bp-6 = offset
 ; bp-8 = segment
 ; bp-10 = ret ptr
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 read_disk_raw:
     push si
 
@@ -539,13 +537,7 @@ read_disk_raw:
 ; Prints a C-Style string (null terminated) using BIOS vga teletype call
 ; void PrintString(char* buf)
 PrintString:
-    push bp
-    mov bp, sp
-
-    push si
-    push di
-    push bx
-
+    __CDECL16_ENTRY
     mov di, [bp + 4]    ; first arg is char* 
 .str_len:
     xor cx, cx         ; ECX = 0
@@ -572,23 +564,13 @@ PrintString:
     jcxz PrintString.endp
     jmp PrintString.print_L0    ; Fetch next character from string
 .endp:
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
+    __CDECL16_EXIT
     ret                         ; Return from procedure
 
 ; Prints a single character
 ; void PrintCharacter(char c);
 PrintCharacter:
-    push bp
-    mov bp, sp
-
-    push si
-    push di
-    push bx
+    __CDECL_ENTRY
 .func_bios:
     mov ax, [bp + 4] ; c
     mov dx, 0x00ff
@@ -599,14 +581,10 @@ PrintCharacter:
     int 0x10                    ; call video interrupt
 
 .endp:
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
+    __CDECL16_EXIT
     ret
 
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; prints the hex representation of of val_upper:val_lower (4 byte value)
 ; void PrintDWORD(uint16_t val_upper, uint16_t val_lower);
 PrintDWORD:
@@ -666,12 +644,7 @@ PrintDWORD:
 ; void SetTextMode(void)
 SetTextMode:
 .prolog:
-    push bp
-    mov bp, sp
-
-    push si
-    push di
-    push bx
+    __CDECL16_ENTRY
     pushf
 .func:
     xor ah, ah                  ; Set Video mode BIOS function
@@ -683,12 +656,7 @@ SetTextMode:
     int 0x10                    ; call video interrupt
 .endp:
     popf
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
+    __CDECL16_EXIT
     ret
 
 ; Address Range Descriptor Structure
@@ -769,6 +737,7 @@ SetTextMode:
 ;   1	    AddressRangeMemory	    This run is available RAM usable by the operating system.
 ;   2	    AddressRangeReserved	This run of addresses is in use or reserved by the system, and must not be used by the operating system.
 ; Other	    Undefined		        Undefined - Reserved for future use.
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 GetMemoryMap:
     push es         ; save segment registers
 
@@ -846,12 +815,7 @@ GetMemoryMap:
 ; disables blinking text mode cursor
 disable_cursor:
 .prolog:
-    push bp
-    mov bp, sp
-
-    push si
-    push di
-    push bx
+    __CDECL16_ENTRY
     pushf
 .func:
     mov dx, 0x3D4
@@ -863,12 +827,7 @@ disable_cursor:
 	out dx, al
 .endp:
     popf
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
+    __CDECL16_EXIT
     ret
 
 ;
@@ -920,6 +879,7 @@ disable_cursor:
 ;    Bits 4-5 - Manufacturer defined
 ;    Bits 6-7 - 00: HDD activity LED off; any other value is "on"
 ;
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnableA20:
     push bx
     push cx
@@ -1005,7 +965,7 @@ EnableA20:
 
     ret
 
-
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnterUnrealMode:
     cli                         ; no interrupts
     push ds                     ; save real mode
