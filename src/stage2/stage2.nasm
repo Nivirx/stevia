@@ -570,7 +570,7 @@ PrintString:
 ; Prints a single character
 ; void PrintCharacter(char c);
 PrintCharacter:
-    __CDECL_ENTRY
+    __CDECL16_ENTRY
 .func_bios:
     mov ax, [bp + 4] ; c
     mov dx, 0x00ff
