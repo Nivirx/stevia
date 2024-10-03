@@ -86,14 +86,6 @@ main:
     call PrintString
     add sp, 0x2
 
-    ; get system memory map
-    call GetMemoryMap
-
-    lea ax, [MemoryMap_OK_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
-
     ; enter unreal mode
     call EnterUnrealMode
 
@@ -102,13 +94,20 @@ main:
     call PrintString
     add sp, 0x2
 
-    ERROR STEVIA_DEBUG_HALT
+    ; get system memory map
+    call GetMemoryMap
+
+    lea ax, [MemoryMap_OK_cstr]
+    push ax
+    call PrintString
+    add sp, 0x2
 
     ; FAT Driver setup
     push bp
     mov bp, sp
     call InitFATDriver
 
+    ERROR STEVIA_DEBUG_HALT
     ;
     ; Find first cluster of bootable file
     ;
@@ -150,8 +149,8 @@ hcf:
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 InitFATDriver:
-    push bx
-
+    __CDECL16_ENTRY
+.func:
     xor eax, eax
     mov dword [fat32_state + FAT32_State_t.active_cluster_32], eax
     mov dword [fat32_state + FAT32_State_t.active_FAT_cluster_32], eax
@@ -190,7 +189,7 @@ InitFATDriver:
 .error:
     ERROR STAGE2_FAT32_INIT_ERROR
 .endp:
-    pop bx
+    __CDECL16_EXIT
     ret
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
@@ -773,11 +772,8 @@ disable_cursor:
 ;    Bit 3 - power on password bytes (CMOS bytes 0x38-0x3f or 0x36-0x3f). 0: accessible, 1: inaccessible
 ;    Bits 4-5 - Manufacturer defined
 ;    Bits 6-7 - 00: HDD activity LED off; any other value is "on"
-;
-; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnableA20:
     __CDECL16_ENTRY
-
     push ds
     push es
     pushf                       ; save data and extra segment since we touch them and save flags
@@ -850,7 +846,6 @@ EnableA20:
     __CDECL16_EXIT
     ret
 
-; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnterUnrealMode:
     __CDECL16_ENTRY
 .func:
