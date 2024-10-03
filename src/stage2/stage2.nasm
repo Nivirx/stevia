@@ -665,26 +665,24 @@ GetMemoryMap:
     mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], 0
 
     mov eax, 0xE820                         ; select 0xE820 function
-    mov ebx, 0x0000                         ; Continuation value
+    xor ebx, ebx                            ; Continuation value, 0 for the first call
 
     mov dx, (BIOSMemoryMap >> 4)
     mov es, dx
-    mov di, 0                               ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
+    xor di, di                              ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
 
     mov ecx, AddressRangeDescStruct_t_size
     mov edx, 0x534D4150                     ; 'SMAP' magic
-
+.loop_L1:
     int 0x15
-    jnc GetMemoryMap.no_error
-    ERROR STAGE2_MM_E820_NO_SUPPORT
-
-.no_error:
-    inc dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
+    jc GetMemoryMap.error
     cmp eax, 0x534D4150
     jne GetMemoryMap.no_smap_returned
+.no_error:
+    inc dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
 
-    cmp ecx, 20
-    jb GetMemoryMap.nonstandard_e820
+    cmp ecx, 20                             ; TODO: maybe this could be handled better than just panicing
+    jb GetMemoryMap.nonstandard_e820        ; non-standard entry found 
 
     cmp ebx, 0
     je GetMemoryMap.endp                    ; 0 in ebx means we have reached the end of memory ranges
@@ -692,17 +690,13 @@ GetMemoryMap:
     add di, AddressRangeDescStruct_t_size   ; increment di to next descriptor
     mov edx, eax                            ; 'SMAP' to edx
     mov eax, 0xE820                         ; select E820 function
-
-    int 0x15
-    jnc GetMemoryMap.no_error               ; carry indicates an error
-
-.other_error:
+    jmp GetMemoryMap.loop_L1
+.error:
     ERROR STAGE2_MM_E820_MISC_ERR
 .nonstandard_e820:
     ERROR STAGE2_MM_E820_NONSTANDARD
 .no_smap_returned:
     ERROR STAGE2_MM_E820_NO_SMAP
-
 .endp:
     pop es
     __CDECL16_EXIT
