@@ -46,6 +46,7 @@ init:
 
 %include "config.inc"
 %include "memory.inc"
+%include "kmem_func_OLD.inc"
 %include "partition_table.inc"
 %include "errors.inc"
 

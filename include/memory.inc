@@ -255,38 +255,3 @@ endstruc
         hlt
         jmp short DEBUG_LOOP
 %endmacro
-
-
-; uint8_t* kmemset(void* dest, uint8_t val, size_t len);
-kmemset:
-    push    di             ; function uses di, so save it.
- 
-    mov     cx, [bp - 2]   ; size_t len
-    mov     al, [bp - 4]   ; uint8_t val
-    mov     di, [bp - 6]   ; void * ptr
-
-    cld
-    rep     stosb 
-.endf:
-    mov     ax, [bp - 6]  ; return pointer to dest
-    pop     di            ; restore di
-    ret
-
-; uint8_t* kmemset(uint8_t* dest, uint8_t* src, size_t len);
-; not overlap safe
-kmemcpy:
-    push di
-    push si                 ; di, si are callee save
-
-    mov cx, [bp - 2]        ; length
-    mov si, [bp - 4]        ; source
-    mov di, [bp - 6]        ; dest
-    
-    cld                     ; ensure we are incrementing
-    rep movsb
-
-.endf:
-    mov ax, [bp - 6]        ; return pointer to dest
-    pop si
-    pop di
-    ret

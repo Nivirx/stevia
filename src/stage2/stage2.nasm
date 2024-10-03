@@ -53,6 +53,7 @@ init:
 %include "config.inc"
 %include "errors.inc"
 %include "memory.inc"
+%include "kmem_func.inc"
 %include "partition_table.inc"
 %include "cdecl16.inc"
 
