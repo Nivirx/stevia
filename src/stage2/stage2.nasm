@@ -658,108 +658,22 @@ SetTextMode:
     popf
     __CDECL16_EXIT
     ret
-
-; Address Range Descriptor Structure
-;
-; Offset in Bytes		Name		Description
-;	0	    BaseAddrLow		Low 32 Bits of Base Address
-;	4	    BaseAddrHigh	High 32 Bits of Base Address
-;	8	    LengthLow		Low 32 Bits of Length in Bytes
-;	12	    LengthHigh		High 32 Bits of Length in Bytes
-;	16	    Type		Address type of  this range.
-; Address Range Descriptor Structure
-;
-; Offset in Bytes		Name		Description
-;	0	    BaseAddrLow		Low 32 Bits of Base Address
-;	4	    BaseAddrHigh	High 32 Bits of Base Address
-;	8	    LengthLow		Low 32 Bits of Length in Bytes
-;	12	    LengthHigh		High 32 Bits of Length in Bytes
-;	16	    Type		Address type of  this range.
-; Input:
-;
-;	EAX	Function Code	E820h
-;	EBX	Continuation	Contains the "continuation value" to get the
-;				next run of physical memory.  This is the
-;				value returned by a previous call to this
-;				routine.  If this is the first call, EBX
-;				must contain zero.
-;	ES:DI	Buffer Pointer	Pointer to an  Address Range Descriptor
-;				structure which the BIOS is to fill in.
-;	ECX	Buffer Size	The length in bytes of the structure passed
-;				to the BIOS.  The BIOS will fill in at most
-;				ECX bytes of the structure or however much
-;				of the structure the BIOS implements.  The
-;				minimum size which must be supported by both
-;				the BIOS and the caller is 20 bytes.  Future
-;				implementations may extend this structure.
-;	EDX	Signature	'SMAP' -  Used by the BIOS to verify the
-;				caller is requesting the system map
-;				information to be returned in ES:DI.
-;
-; Output:
-;
-;	CF	Carry Flag	Non-Carry - indicates no error
-;	EAX	Signature	'SMAP' - Signature to verify correct BIOS
-;				revision.
-;	ES:DI	Buffer Pointer	Returned Address Range Descriptor pointer.
-;				Same value as on input.
-;	ECX	Buffer Size	Number of bytes returned by the BIOS in the
-;				address range descriptor.  The minimum size
-;				structure returned by the BIOS is 20 bytes.
-;	EBX	Continuation	Contains the continuation value to get the
-;				next address descriptor.  The actual
-;				significance of the continuation value is up
-;				to the discretion of the BIOS.  The caller
-;				must pass the continuation value unchanged
-;				as input to the next iteration of the E820
-;				call in order to get the next Address Range
-;				Descriptor.  A return value of zero means that
-;				this is the last descriptor
-;
-; Address Range Descriptor Structure
-;
-; Offset in Bytes		Name		Description
-;	0	    BaseAddrLow		Low 32 Bits of Base Address
-;	4	    BaseAddrHigh	High 32 Bits of Base Address
-;	8	    LengthLow		Low 32 Bits of Length in Bytes
-;	12	    LengthHigh		High 32 Bits of Length in Bytes
-;	16	    Type		Address type of  this range.
-;
-; The BaseAddrLow and BaseAddrHigh together are the 64 bit BaseAddress of this range.
-; The BaseAddress is the physical address of the start of the range being specified.
-;
-; The LengthLow and LengthHigh together are the 64 bit Length of this range.
-; The Length is the physical contiguous length in bytes of a range being specified.
-;
-; The Type field describes the usage of the described address range as defined in the table below.
-
-; Value	       Pneumonic		           Description
-;   1	    AddressRangeMemory	    This run is available RAM usable by the operating system.
-;   2	    AddressRangeReserved	This run of addresses is in use or reserved by the system, and must not be used by the operating system.
-; Other	    Undefined		        Undefined - Reserved for future use.
-; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
+; See memory.inc for a brief description of E820 mmap function
 GetMemoryMap:
-    push es         ; save segment registers
-
-    push bx
-    shr ebx, 16
-    push bx         ; save ebx on a 16bit stack
-
-    push cx
-    shr ecx, 16
-    push cx         ; save ecx on a 16bit stack
-    ; end prolog
+    __CDECL16_ENTRY
+    push es         ; save segment register
+.func:
     mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], 0
 
-    mov eax, 0xE820                 ; select 0xE820 function
-    mov ebx, 0x0000                 ; Continuation value
+    mov eax, 0xE820                         ; select 0xE820 function
+    mov ebx, 0x0000                         ; Continuation value
 
     mov dx, (BIOSMemoryMap >> 4)
     mov es, dx
-    mov di, 0                      ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
+    mov di, 0                               ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
 
     mov ecx, AddressRangeDescStruct_t_size
-    mov edx, 0x534D4150                ; 'SMAP' magic
+    mov edx, 0x534D4150                     ; 'SMAP' magic
 
     int 0x15
     jnc GetMemoryMap.no_error
@@ -774,14 +688,14 @@ GetMemoryMap:
     jb GetMemoryMap.nonstandard_e820
 
     cmp ebx, 0
-    je GetMemoryMap.endp                  ; 0 in ebx means we have reached the end of memory ranges
+    je GetMemoryMap.endp                    ; 0 in ebx means we have reached the end of memory ranges
 
-    add di, AddressRangeDescStruct_t_size         ; increment di to next descriptor
-    mov edx, eax                                ; 'SMAP' to edx
-    mov eax, 0xE820                             ; select E820 function
+    add di, AddressRangeDescStruct_t_size   ; increment di to next descriptor
+    mov edx, eax                            ; 'SMAP' to edx
+    mov eax, 0xE820                         ; select E820 function
 
     int 0x15
-    jnc GetMemoryMap.no_error             ; carry indicates an error
+    jnc GetMemoryMap.no_error               ; carry indicates an error
 
 .other_error:
     ERROR STAGE2_MM_E820_MISC_ERR
@@ -791,19 +705,8 @@ GetMemoryMap:
     ERROR STAGE2_MM_E820_NO_SMAP
 
 .endp:
-    xor ebx, ebx
-    xor ecx, ecx
-
-    pop cx
-    shl ecx, 16
-    pop cx
-
-    pop bx
-    shl ebx, 16
-    pop bx
-
     pop es
-
+    __CDECL16_EXIT
     ret
 
 ; ##############################
