@@ -38,27 +38,29 @@ init:
 
     mov ss, ax                  ; Set Stack Segment to 0
     mov sp, STACK_START         ; Set Stack Pointer
+
+    add sp, 0x4
+    mov ax, 0xDEAD
+    push word ax
+    mov ax, 0xBEEF
+    push word ax             ; mark top of stack for debuging
+
     mov bp, sp
+    sti
 
     jmp 0:main
 
 %include "config.inc"
 %include "errors.inc"
 %include "memory.inc"
-
 %include "partition_table.inc"
 
 %include "fat32/bpb.inc"
 %include "fat32/fat32_structures.inc"
 
 main:
-    sti
-
     mov byte [fat32_ebpb + FAT32_ebpb_t.drive_number_8], dl
     mov word [partition_offset], si
-
-    call SetTextMode
-    call disable_cursor
 
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -67,15 +69,15 @@ main:
     ERROR STAGE2_SIGNATURE_MISSING
 
 .signature_present:
-    mov ax, 0xDEAD
-    push ax
-    mov ax, 0xBEEF
-    push ax             ; mark top of stack for debuging
+    call SetTextMode
+    call disable_cursor
 
     lea ax, [HelloPrompt_cstr]
     push ax
     call PrintString
     add sp, 0x2
+
+    ERROR STEVIA_DEBUG_HALT
 
     ; enable A20 gate
     call EnableA20
@@ -544,9 +546,8 @@ PrintString:
     push di
     push bx
 
-    mov di, [bp + 2]    ; first arg is char* 
+    mov di, [bp + 4]    ; first arg is char* 
 .str_len:
-
     xor cx, cx         ; ECX = 0
     not cx             ; ECX = -1 == 0xFFFF
     xor ax, ax         ; search for al = 0x0
@@ -558,16 +559,12 @@ PrintString:
     dec cx             ; CX contains the length of the string - nul byte at end
 
 .print:
-    mov si, [bp + 2]            ; source string
+    mov si, [bp + 4]            ; source string
 .print_L0:
-    push bp
-    mov bp, sp
-
     movzx ax, byte [si]
     push ax
-
     call PrintCharacter
-    leave
+    add sp, 0x2
 
     inc si
     dec cx
@@ -586,11 +583,14 @@ PrintString:
 ; Prints a single character
 ; void PrintCharacter(char c);
 PrintCharacter:
+    push bp
+    mov bp, sp
+
     push si
     push di
     push bx
-
-    mov ax, [bp-2] ; c
+.func_bios:
+    mov ax, [bp + 4] ; c
     mov dx, 0x00ff
     and ax, dx
 
@@ -602,6 +602,9 @@ PrintCharacter:
     pop bx
     pop di
     pop si
+
+    mov sp, bp
+    pop bp
     ret
 
 ; prints the hex representation of of val_upper:val_lower (4 byte value)
@@ -662,6 +665,15 @@ PrintDWORD:
 ; also clears screen
 ; void SetTextMode(void)
 SetTextMode:
+.prolog:
+    push bp
+    mov bp, sp
+
+    push si
+    push di
+    push bx
+    pushf
+.func:
     xor ah, ah                  ; Set Video mode BIOS function
     mov al, 0x02                ; 16 color 80x25 Text mode
     int 0x10                    ; Call video interrupt
@@ -670,6 +682,13 @@ SetTextMode:
     xor al, al                  ; page 0
     int 0x10                    ; call video interrupt
 .endp:
+    popf
+    pop bx
+    pop di
+    pop si
+
+    mov sp, bp
+    pop bp
     ret
 
 ; Address Range Descriptor Structure
@@ -826,22 +845,31 @@ GetMemoryMap:
 
 ; disables blinking text mode cursor
 disable_cursor:
-	pushf
-	push eax
-	push edx
- 
-	mov dx, 0x3D4
+.prolog:
+    push bp
+    mov bp, sp
+
+    push si
+    push di
+    push bx
+    pushf
+.func:
+    mov dx, 0x3D4
 	mov al, 0xA	    ; low cursor shape register
 	out dx, al
  
 	inc dx
 	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
 	out dx, al
- 
-	pop edx
-	pop eax
-	popf
-	ret
+.endp:
+    popf
+    pop bx
+    pop di
+    pop si
+
+    mov sp, bp
+    pop bp
+    ret
 
 ;
 ;NT 0x15 Function 2400 - Disable A20
