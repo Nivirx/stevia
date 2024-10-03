@@ -94,8 +94,6 @@ main:
     call PrintString
     add sp, 0x2
 
-    ERROR STEVIA_DEBUG_HALT
-
     ; enter unreal mode
     call EnterUnrealMode
 
@@ -104,6 +102,7 @@ main:
     call PrintString
     add sp, 0x2
 
+    ERROR STEVIA_DEBUG_HALT
 
     ; FAT Driver setup
     push bp
@@ -853,10 +852,10 @@ EnableA20:
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 EnterUnrealMode:
+    __CDECL16_ENTRY
+.func:
     cli                         ; no interrupts
-    push ds                     ; save real mode
-    push bx
-
+    push ds                     ; save real mode data selector
     lgdt [unreal_gdt_info]
 
     mov  eax, cr0               ; switch to pmode
@@ -871,10 +870,10 @@ EnterUnrealMode:
     and al,0xFE                 ; back to realmode
     mov  cr0, eax               ; by toggling bit again
 
-    pop bx
     pop ds                      ; get back old segment
     sti
 .endp:
+    __CDECL16_EXIT
     ret
 
 ; #############
