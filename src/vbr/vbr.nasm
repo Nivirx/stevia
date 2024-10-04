@@ -17,8 +17,6 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
-
-
 [BITS 16]
 [ORG 0x7C00]
 [CPU KATMAI]
@@ -28,11 +26,10 @@ phy_bpb_start:
 ; fill BPB area with 0x00 since we skip writing this part to disk
 ; but we need it for the 'jmp short entry; nop' above
 times 33 db 0x00
-
 phy_ebpb_start:
-; fill BPB area with 0x00 since we skip writing this part to disk
-; but we need it for the 'jmp short entry; nop' above
+; fill eBPB area with 0x00 since we skip writing this part to disk
 times 54 db 0x00
+
 %include "cdecl16.inc"
 %include "entry.inc"
 init:
@@ -102,7 +99,7 @@ main:
 .sig_ok:
     mov ax, fat32_bpb_SIZE          ; size in byte
     push ax
-    mov ax, phy_bpb_start               ; start of bpb
+    mov ax, phy_bpb_start           ; start of bpb
     push ax
     mov ax, fat32_bpb               ; defined in memory.inc, destination
     push ax
@@ -111,7 +108,7 @@ main:
 
     mov ax, fat32_ebpb_SIZE          ; 72 bytes of data
     push ax
-    mov ax, phy_ebpb_start               ; start of ebpb
+    mov ax, phy_ebpb_start           ; start of ebpb
     push ax
     mov ax, fat32_ebpb               ; defined in memory.inc, destination
     push ax
