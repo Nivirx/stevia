@@ -33,8 +33,8 @@ phy_ebpb_start:
 ; fill BPB area with 0x00 since we skip writing this part to disk
 ; but we need it for the 'jmp short entry; nop' above
 times 54 db 0x00
+%include "cdecl16.inc"
 %include "entry.inc"
-
 init:
     cli                         ; We do not want to be interrupted
 
@@ -46,14 +46,15 @@ init:
     mov sp, STACK_START         ; Setup stack
     mov bp, sp                  ; base ptr = stack ptr
 
-    mov bx, VBR_ENTRY           ; move BP to the new start of the initial boot sector
+    mov bx, VBR_ENTRY           ; move Bx to the new start of the initial boot sector
     sti                         ; all done with inital setup and relocation, reenable interupts
 
     jmp 0:main                  ; fix up cs:ip just in case and jump to relocated code
+    nop
 
 %include "config.inc"
 %include "memory.inc"
-%include "kmem_func_OLD.inc"
+%include "kmem_func.inc"
 %include "partition_table.inc"
 %include "errors.inc"
 
@@ -71,12 +72,6 @@ main:
 
 ; read sectors 1-63 to stage2 entry point
 .load_stage2:
-    push bp
-    mov bp, sp
-
-    ;uint8_t read_disk_raw(size_t count, uint16_t buf_segment, uint16_t buf_offset, 
-    ;                      uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-
     xor ax, ax
     push ax         ; upper_lower_lba = 0
 
@@ -91,11 +86,10 @@ main:
     shr ax, 4
     push ax          ; segment = 7E0
 
-    mov ax, STAGE2_SECTOR_COUNT
-    push ax
-
-    call read_disk_raw
-    leave
+    ;uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
+    ;                      uint16_t lower_lower_lba, uint16_t upper_lower_lba)
+    call read_stage2_raw
+    add sp, 0x8
 
 .check_sig:
     mov ax, 0x7E0
@@ -106,8 +100,6 @@ main:
     ERROR VBR_ERROR_NO_SIGNATURE          ; no signature present in stage2
     
 .sig_ok:
-    push bp
-    mov bp, sp
     mov ax, fat32_bpb_SIZE          ; size in byte
     push ax
     mov ax, phy_bpb_start               ; start of bpb
@@ -115,10 +107,8 @@ main:
     mov ax, fat32_bpb               ; defined in memory.inc, destination
     push ax
     call kmemcpy                    ; copy bpb to memory
-    leave
+    add sp, 0x6
 
-    push bp
-    mov bp, sp
     mov ax, fat32_ebpb_SIZE          ; 72 bytes of data
     push ax
     mov ax, phy_ebpb_start               ; start of ebpb
@@ -126,7 +116,7 @@ main:
     mov ax, fat32_ebpb               ; defined in memory.inc, destination
     push ax
     call kmemcpy                     ; copy ebpb to memory
-    leave
+    add sp, 0x6
 
     mov si, [partition_offset]
     mov dl, [bsDriveNumber]
@@ -152,54 +142,43 @@ stop:
 ; successfully transferred
 ;
 ;
-; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-; bp-0 = call frame
-; bp-2 = upper_lower_lba
-; bp-4 = lower_lower_lba
-; bp-6 = offset
-; bp-8 = segment
-; bp-10 = count
-; bp-12 = ret ptr
-read_disk_raw:
-    push si
-
-    ; uint8_t* kmemset(void* dest, uint8_t val, size_t len);
-    push bp
-    mov bp, sp
-
+; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, 
+;                       uint16_t lower_lower_lba, uint16_t upper_lower_lba)
+read_stage2_raw:
+    __CDECL16_ENTRY
+.func:                        
     mov ax, 0x10
     push ax             ; len = 16 bytes
     xor ax, ax
     push ax             ; val = 0
     mov ax, lba_packet
     push ax             ; dest = lba_packet address
-
-    call kmemset
-    leave
+    call kmemset        
+    add sp, 0x06
 
     mov byte [lba_packet + LBAPkt_t.size], 0x10
     mov word [lba_packet + LBAPkt_t.xfer_size], STAGE2_SECTOR_COUNT
 
-    mov ax, [bp-2]
+    mov ax, [bp + 10]
     shl eax, 16
-    mov ax, [bp-4]
+    mov ax, [bp + 8]
     mov dword [lba_packet + LBAPkt_t.lower_lba], eax
 
-    mov ax, [bp-6]
+    mov ax, [bp + 6]
     mov word [lba_packet + LBAPkt_t.offset], ax
 
-    mov ax, [bp-8]
+    mov ax, [bp + 4]
     mov word [lba_packet + LBAPkt_t.segment], ax
 
     mov si, lba_packet
     mov ah, 0x42
     mov dl, byte [bsDriveNumber]
     int 0x13
-    jnc read_disk_raw.endf
+    jnc .endf
 
     ERROR VBR_ERROR_DISK_READ_ERR
 .endf:
-    pop si
+    __CDECL16_EXIT
     ret
 ; Data
 
