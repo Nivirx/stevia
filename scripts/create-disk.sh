@@ -37,12 +37,12 @@ mount_point=/tmp/stevia_disk
 disk_tmp_file=/tmp/disk.img
 disk_file_final=./disk.img.gz
 
-# $disk_sector_size * $disk_size = total bytes, default is 128MiB
-disk_size=262144
+# $disk_sector_size * $disk_size = total bytes, default is 256MiB
+disk_size=524288
 disk_sector_size=512
 
 if ! [ -e $disk_tmp_file ]; then
-    # create raw disk image with 128MiB of space
+    # create raw disk image
     dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size
     sync
 else
@@ -66,7 +66,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
         # get first partition, this is sloppy might need to review this...
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.vfat -v -F32 -S $disk_sector_size $firstpart
+        mkfs.fat -v -F32 $firstpart
 
         # copy MBR while preserving partition table
         dd if=$mbr_file of=$ld bs=1 count=440
