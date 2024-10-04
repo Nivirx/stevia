@@ -23,8 +23,8 @@
 [CPU KATMAI]
 jmp short init
 nop
-
-%include "entry.inc"
+%include "cdecl16.inc"              ; include calling convention macros for cdecl16
+%include "entry.inc"                ; defines with entry points for various stages & stack
 init:
     cli                             ; We do not want to be interrupted
 
@@ -47,7 +47,7 @@ init:
 
 %include "config.inc"
 %include "memory.inc"
-%include "kmem_func_OLD.inc"
+%include "kmem_func.inc"
 %include "partition_table.inc"
 %include "errors.inc"
 
@@ -56,7 +56,7 @@ main:
 
     .check_disk:
         cmp dl, 0x80
-        jae main.find_active
+        jae main.check_extentions
         ERROR MBR_ERROR_DISK_T_ERR
 
     .check_extentions:
@@ -85,9 +85,6 @@ main:
                                                 ; this gives us an offset from the begining of the partition table
         mov word [part_offset], ax              ; update part_offset
     .read_data:
-        push bp
-        mov bp, sp
-
         ;uint8_t read_disk_raw(size_t count, uint16_t buf_segment, uint16_t buf_offset, 
         ;                      uint16_t lower_lower_lba, uint16_t upper_lower_lba)
         mov eax, dword [bx + PartEntry_t.lba_start]
@@ -103,11 +100,8 @@ main:
         xor ax, ax
         push ax        ; segment = 0  
 
-        mov ax, 1
-        push ax
-
-        call read_disk_raw
-        leave
+        call read_vbr_raw
+        add sp, 0x8
 
         jnc main.goto_vbr
         ERROR MBR_ERROR_DISK_READ_ERR                     ; error in LBA read
@@ -117,9 +111,6 @@ main:
         ERROR MBR_ERROR_NO_VBR_SIG                        ; no signature present
     
     .sig_ok:
-        push bp
-        mov bp, sp
-
         mov ax, partition_table_SIZE            ; 72 bytes of data
         push ax
         mov ax, DiskSig                         ; start of partition table
@@ -127,7 +118,7 @@ main:
         mov ax, partition_table                 ; defined in memory.inc
         push ax
         call kmemcpy                            ; copy partition table to memory
-        leave
+        add sp, 0x6
 
         xor ah, ah                              ; Set Video mode BIOS function
         mov al, 0x02                            ; 16 color 80x25 Text mode
@@ -158,54 +149,41 @@ main:
 ;
 ;
 ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-; bp-0 = call frame
-; bp-2 = upper_lower_lba
-; bp-4 = lower_lower_lba
-; bp-6 = offset
-; bp-8 = segment
-; bp-10 = count
-; bp-12 = ret ptr
-read_disk_raw:
-    push si
-
-    ; uint8_t* kmemset(void* dest, uint8_t val, size_t len);                      
-    push bp
-    mov bp, sp
-
+read_vbr_raw:
+    __CDECL16_ENTRY
+.func:                        
     mov ax, 0x10
     push ax             ; len = 16 bytes
     xor ax, ax
     push ax             ; val = 0
     mov ax, lba_packet
     push ax             ; dest = lba_packet address
-
-    call kmemset
-    leave
+    call kmemset        
+    add sp, 0x06
 
     mov byte [lba_packet + LBAPkt_t.size], 0x10
-    mov word [lba_packet + LBAPkt_t.xfer_size], STAGE2_SECTOR_COUNT
+    mov word [lba_packet + LBAPkt_t.xfer_size], 0x0001
 
-    mov ax, [bp-2]
+    mov ax, [bp + 10]
     shl eax, 16
-    mov ax, [bp-4]
+    mov ax, [bp + 8]
     mov dword [lba_packet + LBAPkt_t.lower_lba], eax
 
-    mov ax, [bp-6]
+    mov ax, [bp + 6]
     mov word [lba_packet + LBAPkt_t.offset], ax
 
-    mov ax, [bp-8]
+    mov ax, [bp + 4]
     mov word [lba_packet + LBAPkt_t.segment], ax
 
     mov si, lba_packet
     mov ah, 0x42
     mov dl, byte [boot_drive]
     int 0x13
-    jnc read_disk_raw.endf
+    jnc .endf
 
-    mov al, 'B'
-    jmp error
+    ERROR MBR_ERROR_INT13h_EREAD_ERR
 .endf:
-    pop si
+    __CDECL16_EXIT
     ret
 
 ; #############
