@@ -24,8 +24,15 @@
 [CPU KATMAI]
 jmp short init
 nop
+phy_bpb_start:
+; fill BPB area with 0x00 since we skip writing this part to disk
+; but we need it for the 'jmp short entry; nop' above
+times 33 db 0x00
 
-%include "fat32/bpb_reserve_area.inc"
+phy_ebpb_start:
+; fill BPB area with 0x00 since we skip writing this part to disk
+; but we need it for the 'jmp short entry; nop' above
+times 54 db 0x00
 %include "entry.inc"
 
 init:
@@ -103,7 +110,7 @@ main:
     mov bp, sp
     mov ax, fat32_bpb_SIZE          ; size in byte
     push ax
-    mov ax, bpb_start               ; start of bpb
+    mov ax, phy_bpb_start               ; start of bpb
     push ax
     mov ax, fat32_bpb               ; defined in memory.inc, destination
     push ax
@@ -114,7 +121,7 @@ main:
     mov bp, sp
     mov ax, fat32_ebpb_SIZE          ; 72 bytes of data
     push ax
-    mov ax, ebpb_start               ; start of ebpb
+    mov ax, phy_ebpb_start               ; start of ebpb
     push ax
     mov ax, fat32_ebpb               ; defined in memory.inc, destination
     push ax
