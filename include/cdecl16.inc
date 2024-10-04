@@ -17,7 +17,7 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
-
+%ifnmacro __CDECL16_ENTRY
 %macro __CDECL16_ENTRY 0
     push bp
     mov bp, sp
@@ -26,7 +26,9 @@
     push di
     push bx
 %endmacro
+%endif
 
+%ifnmacro __CDECL16_EXIT
 %macro __CDECL16_EXIT 0
     pop bx
     pop di
@@ -35,3 +37,4 @@
     mov sp, bp
     pop bp
 %endmacro
+%endif
