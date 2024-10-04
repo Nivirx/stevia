@@ -1,4 +1,5 @@
 label: dos
 unit: sectors
+sector-size: 512
 
-start=        2048, type=b, bootable
+start=        2048, type=c, bootable

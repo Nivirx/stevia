@@ -57,7 +57,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
         # get first partition
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.vfat -v -F32 $firstpart
+        mkfs.vfat -v -F32 -S 512 $firstpart
 
         # copy MBR while preserving partition table
         dd if=$mbr_file of=$ld bs=1 count=440
