@@ -1,6 +1,7 @@
 out/*
 build/*
 *.img
+*.img.gz
 *.elf
 bx_enh_dbg.ini
 stevia-log

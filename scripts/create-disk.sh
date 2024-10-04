@@ -25,21 +25,30 @@ if ! [ $(id -u) = 0 ]; then
    exit 1
 fi
 
+# paths to bootcode
 mbr_file=build/mbr.bin
 vbr_file=build/vbr.bin
 stage2_file=build/stage2.bin
 boottest_file=build/BOOT_386.bin
 
-mount_point=/tmp/stevia_disk
 
-if ! [ -e disk.img ]; then
+# Disk creation options
+mount_point=/tmp/stevia_disk
+disk_tmp_file=/tmp/disk.img
+disk_file_final=./disk.img.gz
+
+# $disk_sector_size * $disk_size = total bytes, default is 128MiB
+disk_size=262144
+disk_sector_size=512
+
+if ! [ -e $disk_tmp_file ]; then
     # create raw disk image with 128MiB of space
-    dd if=/dev/zero of=disk.img bs=512 count=262144
+    dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size
     sync
 else
     echo "Removing old disk image..."
-    rm -rfv disk.img
-    dd if=/dev/zero of=disk.img bs=512 count=262144
+    rm -rfv $disk_tmp_file
+    dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size
     sync
 fi
 
@@ -47,7 +56,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         if [ -e $mbr_file ] && [ -e $vbr_file ]; then
         # get next loop device and mount it
         ld=$(losetup -f)
-        losetup -P -b 512 $ld disk.img
+        losetup -P -b 512 $ld $disk_tmp_file
 
         # create a DOS disk, with 1 FAT32 partition that is bootable, part1 starts at sector 2048
         sfdisk $ld < scripts/loop_setup.sfdisk
@@ -55,9 +64,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # partprobe the image
         partprobe $ld
 
-        # get first partition
+        # get first partition, this is sloppy might need to review this...
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.vfat -v -F32 -S 512 $firstpart
+        mkfs.vfat -v -F32 -S $disk_sector_size $firstpart
 
         # copy MBR while preserving partition table
         dd if=$mbr_file of=$ld bs=1 count=440
@@ -73,7 +82,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         dd if=$vbr_file of=$firstpart bs=1 seek=510 skip=510 count=2
 
         #stage2 to sectors 1-64
-        dd if=$stage2_file of=$ld bs=512 seek=1
+        dd if=$stage2_file of=$ld bs=$disk_sector_size seek=1
 
         # copy boot32 boot test file to disk image
         if ! [ -e $mount_point ]; then
@@ -94,8 +103,10 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         losetup -d $ld
 
         # chown to the real user to prevent issues with reading/writing the file later
-        SUDOUSER=$(logname)
-        chown --from=root:root ${SUDOUSER}:$(id $SUDOUSER -g) disk.img
+        # BUG: ${logname}:$(id $(logname -g)) doesn't work right on WSL because of runlevel hacks in WSL
+        # BUG: https://github.com/microsoft/WSL/issues/1761
+        # as a work around I'll just reference LICENSE.md...WHICH SHOULD ALWAYS BE THERE 👀
+        chown --from=root:root --reference=LICENSE.md $disk_tmp_file
 
     else
         echo "unable to find MBR/VBR binaries!"
@@ -159,7 +170,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
         dd if=$vbr_file of=/dev/$firstpart bs=1 seek=510 skip=510 count=2 conv=sync
 
         #stage2 to sectors 1-64
-        dd if=$stage2_file of=$ld_path bs=512 seek=1 conv=sync
+        dd if=$stage2_file of=$ld_path bs=$disk_sector_size seek=1 conv=sync
 
         #sync pending dd stuff
         sync
@@ -189,7 +200,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
         # chown to the real user to prevent issues with reading/writing the file later
         SUDOUSER=$(logname)
         chown ${SUDOUSER}:staff disk.img
-
+        gzip -9kc $disk_tmp_file > $disk_file_final
     else
         echo "unable to find MBR/VBR binaries!"
         exit 2
