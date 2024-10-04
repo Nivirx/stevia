@@ -17,37 +17,35 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
+%include 'cdecl16.inc'
 
-; uint8_t* kmemset(void* dest, uint8_t val, size_t len);
+; uint8_t* kmemset(void* dest, uint8_t val, uint8_t len);
 kmemset:
-    push    di             ; function uses di, so save it.
- 
-    mov     cx, [bp - 2]   ; size_t len
-    mov     al, [bp - 4]   ; uint8_t val
-    mov     di, [bp - 6]   ; void * ptr
+    __CDECL16_ENTRY
+ .func:
+    mov     cx, [bp + 8]   ; size_t len
+    mov     al, [bp + 6]   ; uint8_t val
+    mov     di, [bp + 4]   ; void * ptr
 
     cld
-    rep     stosb 
-.endf:
-    mov     ax, [bp - 6]  ; return pointer to dest
-    pop     di            ; restore di
+    rep     stosb
+    mov     ax, di         ; return pointer to dest
+.endp:
+    __CDECL16_EXIT
     ret
 
-; uint8_t* kmemset(uint8_t* dest, uint8_t* src, size_t len);
+; uint8_t* kmemset(uint8_t* dest, uint8_t* src, uint8_t len);
 ; not overlap safe
 kmemcpy:
-    push di
-    push si                 ; di, si are callee save
-
-    mov cx, [bp - 2]        ; length
-    mov si, [bp - 4]        ; source
-    mov di, [bp - 6]        ; dest
+    __CDECL16_ENTRY
+.func:
+    mov cx, [bp + 8]        ; len
+    mov si, [bp + 6]        ; src
+    mov di, [bp + 4]        ; dest
     
     cld                     ; ensure we are incrementing
     rep movsb
-
+    mov ax, di              ; return pointer to dest
 .endf:
-    mov ax, [bp - 6]        ; return pointer to dest
-    pop si
-    pop di
+    __CDECL16_EXIT
     ret
