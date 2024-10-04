@@ -59,7 +59,7 @@
 
 ; copy of FAT32 EBPB, 54 bytes
 ;0x306A
-%define fat32_ebpb            0x3070
+%define fat32_ebpb            0x30A0
 %define fat32_ebpb_SIZE       54
 
 ; FAT32 FSInfo, 512 bytes
