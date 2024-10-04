@@ -32,7 +32,7 @@
 %define MBR_ERROR_RESERVED_i         'i'
 %define MBR_ERROR_RESERVED_j         'j'
 %define MBR_ERROR_RESERVED_k         'k'
-%define MBR_ERROR_RESERVED_l         'l'
+%define MBR_ERROR_INT13h_EREAD_ERR   'l'
 
 ; 12 Error
 %define VBR_ERROR_WRONG_FAT_SIZE     'm'
