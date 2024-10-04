@@ -1,4 +1,5 @@
-iso := 'disk.img'
+iso := '/tmp/disk.img'
+isoz := 'disk.img.gz'
 
 include := './include'
 
@@ -15,9 +16,9 @@ boottest_binary_files := $(patsubst src/miniboot32/%.nasm, build/%.bin, $(bootte
 build_dir := 'build'
 
 qemu_args := -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
-.PHONY: all mbr vbr stage2 boottest clean run run_bochs iso
+.PHONY: all mbr vbr stage2 boottest clean run run_bochs iso isoz
 
-all: $(iso) $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files)
+all: $(iso) $(isoz) $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files)
 mbr: $(mbr_binary_files)
 vbr: $(vbr_binary_files)
 stage2: $(stage2_binary_files)
@@ -26,6 +27,7 @@ boottest: $(boottest_binary_files)
 clean:
 	@rm -rvf $(build_dir)/*
 	@rm -rvf $(iso)
+	@rm -rvf $(isoz)
 
 run: $(iso)
 	@sudo qemu-system-i386 $(qemu_args) -hda $(iso)
@@ -34,7 +36,10 @@ run_bochs: $(iso)
 	@bochs -q
 
 iso: $(iso)
-	@file disk.img
+	@file $(iso)
+
+isoz: $(isoz)
+	@file $(isoz)
 
 build/%.bin: src/mbr/%.nasm
 	@mkdir -p $(shell dirname $@)
@@ -56,3 +61,5 @@ $(iso): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottes
 	@echo root access needed to create disk image...
 	@sudo scripts/create-disk.sh
 
+$(isoz): $(iso)
+	@gzip -9kc $(iso) > $(isoz)
