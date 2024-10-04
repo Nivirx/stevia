@@ -26,6 +26,7 @@ nop
 
 ; boot drive in dl
 ; active partition offset in si
+%include "cdecl16.inc"
 %include "entry.inc"
 init:
     cli                         ; We do not want to be interrupted
@@ -55,7 +56,6 @@ init:
 %include "memory.inc"
 %include "kmem_func.inc"
 %include "partition_table.inc"
-%include "cdecl16.inc"
 
 %include "fat32/bpb.inc"
 %include "fat32/fat32_structures.inc"
