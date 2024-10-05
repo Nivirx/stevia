@@ -18,9 +18,11 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_VIDEO
 ; Sets output to 80x25 16 color text mode via BIOS call
 ; also clears screen
 ; void SetTextMode(void)
+ALIGN 4, db 0x90
 SetTextMode:
 .prolog:
     __CDECL16_ENTRY
@@ -39,6 +41,7 @@ SetTextMode:
     ret
 
 ; disables blinking text mode cursor
+ALIGN 4, db 0x90
 disable_cursor:
     __CDECL16_ENTRY
 .func:
@@ -52,3 +55,6 @@ disable_cursor:
 .endp:
     __CDECL16_EXIT
     ret
+    
+%endif
+%define __INC_VIDEO

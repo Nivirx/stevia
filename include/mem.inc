@@ -18,6 +18,8 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_MEM
+
 
 ; ## Generic Low mem map (from osdev wiki) ##
 ; start 	        end 	    size 	        type 	                    description
@@ -54,12 +56,12 @@
 
 ; copy of FAT32 BPB, 33 bytes (+1 to the next value to align to uint16_t)
 ;0x3048
-%define fat32_bpb             0x3050
-%define fat32_bpb_SIZE        33
+%define fat32_bpb             0x304A
+%define fat32_bpb_SIZE        36
 
 ; copy of FAT32 EBPB, 54 bytes
 ;0x306A
-%define fat32_ebpb            0x30A0
+%define fat32_ebpb            0x306E
 %define fat32_ebpb_SIZE       54
 
 ; FAT32 FSInfo, 512 bytes
@@ -69,18 +71,18 @@
 
 ; some stored state for the fat32 driver
 ;0x32A2
-%define fat32_state           0x32B0
+%define fat32_state           0x34B0
 %define fat32_state_SIZE      32
 
 ; next free space is 0x32D0
-%define fat32_nc_data         0x32D0
+%define fat32_nc_data         0x35D0
 %define fat32_nc_data_size    16
 
 ; lba_packet for raw_disk_read
 %define lba_packet            0x4000
 
 %define BIOSMemoryMap         0x4200
-%define SteviaInfo            0x4400
+%define SteviaInfo            0x5200
 
 
 ; High memory addresses for loading kernel (for use with unreal mode and 32bit override)
@@ -110,8 +112,5 @@ struc SteviaInfoStruct_t
     .EBPBDataPtr       resd 1
 endstruc
 
-%macro DEBUG_HCF 0
-    DEBUG_LOOP:
-        hlt
-        jmp short DEBUG_LOOP
-%endmacro
+%endif
+%define __INC_MEM

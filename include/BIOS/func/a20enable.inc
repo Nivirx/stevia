@@ -18,6 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_A20ENABLE
 ;
 ;INT 0x15 Function 2400 - Disable A20
 ;Returns:
@@ -66,6 +67,7 @@
 ;    Bit 3 - power on password bytes (CMOS bytes 0x38-0x3f or 0x36-0x3f). 0: accessible, 1: inaccessible
 ;    Bits 4-5 - Manufacturer defined
 ;    Bits 6-7 - 00: HDD activity LED off; any other value is "on"
+ALIGN 4, db 0x90
 EnableA20:
     __CDECL16_ENTRY
     push ds
@@ -137,3 +139,6 @@ EnableA20:
     pop ds
     __CDECL16_EXIT
     ret
+    
+%endif
+%define __INC_A20ENABLE

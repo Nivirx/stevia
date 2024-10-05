@@ -18,6 +18,8 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_PART_TABLE
+
 ; Partition table entry format
 ; Off.  Size.       Description
 ;0x00 	  1 	Drive attributes (bit 7 set = active or bootable)
@@ -42,3 +44,6 @@ struc PartTable_t
     .partition3 resb 16
     .partition4 resb 16
 endstruc
+
+%endif
+%define __INC_PART_TABLE

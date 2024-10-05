@@ -18,6 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_BPD_OFFSET_BX
 
 ; BPB Information
 ; Off.  Hex Off. Size   Description
@@ -89,3 +90,6 @@
 %define bsVolumeLabel       bx+0x47
 %define bsSystemIdent       bx+0x52
 ;-- End EBPB
+
+%endif
+%define __INC_BPD_OFFSET_BX
