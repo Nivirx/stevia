@@ -829,7 +829,7 @@ IntToHex_table:
 NewLine_cstr:
     db StrCRLF_NUL
 BootTarget_str:
-    db "BOOT_386BIN"
+    db "BOOTI686BIN"
 
 ; #############
 ;

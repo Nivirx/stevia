@@ -243,6 +243,7 @@ endstruc
 ; STACK BOTTOM
 ;
 ; first argument == starting offset from bp for lower 16bits
+; BUG: needs fixed for cdecl16
 %macro MOV_DWORD_EAX 1
     mov ax, [bp+(%1+2)]
     shl eax, 16

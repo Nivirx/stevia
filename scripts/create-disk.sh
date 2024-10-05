@@ -29,7 +29,7 @@ fi
 mbr_file=build/mbr.bin
 vbr_file=build/vbr.bin
 stage2_file=build/stage2.bin
-boottest_file=build/BOOT_386.bin
+boottest_file=build/BOOTi686.bin
 
 
 # Disk creation options
@@ -38,7 +38,7 @@ disk_tmp_file=/tmp/disk.img
 disk_file_final=./disk.img.gz
 
 # $disk_sector_size * $disk_size = total bytes, default is 256MiB
-disk_size=524288
+disk_size=(524288 * 2)
 disk_sector_size=512
 
 if ! [ -e $disk_tmp_file ]; then
@@ -66,7 +66,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
         # get first partition, this is sloppy might need to review this...
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.fat -v -F32 $firstpart
+        mkfs.fat -v -n 'STEVIAFS' $firstpart
 
         # copy MBR while preserving partition table
         dd if=$mbr_file of=$ld bs=1 count=440
@@ -89,9 +89,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             mkdir $mount_point
         fi
         mount $firstpart $mount_point
-
+        mkdir -p $mount_point/STEVIA
         if [ -e $boottest_file ]; then
-            cp -v $boottest_file $mount_point
+            cp -v $boottest_file $mount_point/STEVIA/BOOTi686.BIN
         else
             echo "unable to find boot32.bin!"
             exit 3
