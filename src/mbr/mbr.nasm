@@ -33,7 +33,7 @@ init:
     mov es, ax                      ; *
     
     mov ss, ax                      ; Set Stack Segment to 0
-    mov sp, STACK_START             
+    mov sp, EARLY_STACK_START             
 
     mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
     mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)

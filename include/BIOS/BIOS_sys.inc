@@ -18,8 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-
-%define SECTOR_SIZE             512
-%define STAGE2_SECTOR_COUNT    0x40
-; 32 KiB
-%define MAX_STAGE2_BYTES      (SECTOR_SIZE * STAGE2_SECTOR_COUNT)
+%include 'BIOS/func/a20enable.inc'
+%include 'BIOS/func/E820_memory_map.inc'
+%include 'BIOS/func/ext_read.inc'
+%include 'BIOS/func/video.inc'

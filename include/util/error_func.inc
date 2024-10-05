@@ -18,8 +18,33 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%macro ERROR 1
+    xor ax, ax
+    mov al, %1
+    jmp error
+%endmacro
 
-%define SECTOR_SIZE             512
-%define STAGE2_SECTOR_COUNT    0x40
-; 32 KiB
-%define MAX_STAGE2_BYTES      (SECTOR_SIZE * STAGE2_SECTOR_COUNT)
+; pass error as ascii character in al, errors a-zA-Z or 0-9
+error:
+    ; fs = 0xb800 => fs:0x0000 = 0xb8000
+    mov dx, 0xB800
+    mov fs, dx
+
+    mov dx, STEVIA_DEBUG_OK
+    cmp ax, dx
+    jge error.debug_err
+    mov dh, 0x4F                ; color 0x4F is white text/red background
+    jmp error.print
+.debug_err:
+    mov dh, 0x5F                ; debug case is white text/purple background
+
+    ; the characters are two bytes in the order of 0xb8000: byte c, byte attribute
+    ; since x86 is le, we store the attribute in the MSB of dx
+.print:
+    mov dl, al
+    mov word [fs:0x0000], dx
+    jmp error.stop
+
+.stop:
+    hlt
+    jmp short error.stop

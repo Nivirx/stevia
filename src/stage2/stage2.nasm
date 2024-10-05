@@ -38,7 +38,7 @@ init:
     mov gs, ax                  ; *
 
     mov ss, ax                  ; Set Stack Segment to 0
-    mov sp, STACK_START         ; Set Stack Pointer
+    mov sp, EARLY_STACK_START         ; Set Stack Pointer
 
     add sp, 0x4
     mov ax, 0xDEAD
@@ -52,7 +52,7 @@ init:
     jmp 0:main
 
 %include "config.inc"
-%include "errors.inc"
+%include "error_codes.inc"
 %include "memory.inc"
 %include "kmem_func.inc"
 %include "partition_table.inc"
@@ -146,7 +146,7 @@ hcf:
 ;
 ; ###############
 
-%include 'BIOS/BIOS_func.inc'
+%include 'BIOS/BIOS_sys.inc'
 
 ; ##############################
 ;
