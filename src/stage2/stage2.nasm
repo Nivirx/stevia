@@ -110,15 +110,17 @@ main:
     ; Find first cluster of bootable file
     ;
     call SearchFATDIR
-    PUSH_DWORD_EAX      ; save return value of function as a 32-bit value on a 16-bit aligned stack
+    push dword eax
 
     lea ax, [FileFound_OK_cstr]
     push ax
     call PrintString
     add sp, 0x2
 
-    call PrintDWORD     ; print 32bit value  void PrintDWORD(uint32_t dword)
-    
+    push dword eax
+    call PrintDWORD     ; void PrintDWORD(uint32_t dword)
+    add sp, 0x4
+
     lea ax, [NewLine_cstr]
     push ax
     call PrintString
@@ -194,12 +196,11 @@ InitFATDriver:
 SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
-    xor ecx, ecx
-    xor edx, edx
     .load_first_dir:
         mov eax, [fat32_ebpb + FAT32_ebpb_t.root_dir_cluster_32]
         mov dword [fat32_state + FAT32_State_t.active_dir_cluster_32], eax
-        PUSH_DWORD_EAX
+
+        push dword eax          ; cluster
         lea ax, [dir_buffer]
         push ax                 ; offset
         xor ax, ax
@@ -211,12 +212,11 @@ SearchFATDIR:
         jmp SearchFATDIR.empty_dir_entry
 
     .load_next_dir:
-        ; uint32_t NextCluster(uint32_t active_cluster);
         ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
         ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
         mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
-        PUSH_DWORD_EAX
-        call NextCluster
+        push dword eax
+        call NextCluster        ; uint32_t NextCluster(uint32_t active_cluster);
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
@@ -226,12 +226,12 @@ SearchFATDIR:
     .load_next_dir_next_OK:
         ; load 512 bytes of directory entries from data sector
         mov eax, [fat32_state + FAT32_State_t.active_dir_cluster_32]
-        PUSH_DWORD_EAX
-        lea ax, [dir_buffer]
+
+        push dword eax
+        lea ax, [dir_buffer]    ; cluster
         push ax                 ; offset
         xor ax, ax
         push ax                 ; segment
-
         call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
         sub sp, 0x8
 
@@ -297,8 +297,7 @@ SearchFATDIR:
 NextCluster:
     __CDECL16_ENTRY
 .func:
-    MOV_DWORD_EAX 2
-    mov edx, eax
+    mov dword edx, [bp + 4]
     mov si, fat32_nc_data
 .calc_offset:
 ; fat_offset = active_cluster * 4
@@ -336,19 +335,15 @@ NextCluster:
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
     ; load correct fat 
-    ror eax, 16
-    push ax
-    ror eax, 16
-    push ax
+    push dword eax
 
     mov ax, fat_buffer
     push ax
 
     xor ax, ax
     push ax
-
     ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-    call read_disk_raw  ; read_disk_raw(0, fat_buffer, 31:16 fat_sector, 15:0 fat_sector)
+    call read_disk_raw  ; read_disk_raw(0, fat_buffer, fat_sector)
     add sp, 0x8
 
 .read_cluster:
@@ -364,7 +359,7 @@ NextCluster:
 ClusterToLBA:
     __CDECL16_ENTRY
 .func:
-    MOV_DWORD_EAX 2
+    mov dword eax, [bp + 4]
     sub eax, 2
     movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_8]
     mul edx
@@ -378,26 +373,21 @@ ClusterToLBA:
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
-    MOV_DWORD_EAX 8
-    PUSH_DWORD_EAX
+    mov dword eax, [bp + 8]
+    push dword eax
     call ClusterToLBA    ; uint32_t ClusterToLBA(uint32_t cluster)
     add sp, 0x4         ; eax == LBA
+    
 
-    mov dx, [bp + 4] ; seg
-    shl edx, 16
-    mov dx, [bp + 6] ; offset
+    push dword eax      ;uint32_t lba
 
-    ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-    ror eax, 16
-    push ax
-    ror eax, 16
-    push ax             ; uint32 cluster split to two (2) uint16_t's (lower and upper LBA)
-
+    mov dx, [bp + 4]    ; seg
     push dx             ; uint16_t buf_offset
-    ror edx, 16
+
+    mov dx, [bp + 6]    ; offset
     push dx             ; unit16_t segment
 
-    call read_disk_raw
+    call read_disk_raw ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint32_t lba)
     add sp, 0x8
 .endp:
     __CDECL16_EXIT
@@ -426,13 +416,7 @@ ReadFATCluster:
 ; successfully transferred
 ;
 ;
-; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-; bp-0 = call frame
-; bp-2 = upper_lower_lba
-; bp-4 = lower_lower_lba
-; bp-6 = offset
-; bp-8 = segment
-; bp-10 = ret ptr
+; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint32_t lba)
 ; TODO: this needs validation
 read_disk_raw:
     __CDECL16_ENTRY
@@ -450,15 +434,13 @@ read_disk_raw:
     mov byte [lba_packet + LBAPkt_t.size], 0x10
     mov word [lba_packet + LBAPkt_t.xfer_size], 0x0001
 
-    mov ax, [bp + 4]
-    shl eax, 16
-    mov ax, [bp + 6]
+    mov dword eax, [bp + 8]
     mov dword [lba_packet + LBAPkt_t.lower_lba], eax
 
-    mov ax, [bp + 8]
+    mov ax, [bp + 6]
     mov word [lba_packet + LBAPkt_t.offset], ax
 
-    mov ax, [bp + 10]
+    mov ax, [bp + 4]
     mov word [lba_packet + LBAPkt_t.segment], ax
 
     mov si, lba_packet
@@ -520,17 +502,15 @@ PrintCharacter:
     ret
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
-; prints the hex representation of of val_upper:val_lower (4 byte value)
-; void PrintDWORD(uint16_t val_upper, uint16_t val_lower);
+; prints the hex representation of of val
+; void PrintDWORD(uint32_t val);
 PrintDWORD:
     __CDECL16_ENTRY
 .func: 
     lea si, [IntToHex_table]
     mov ebx, 16     ; base-16
 
-    mov ax, [bp + 6] ; val_upper
-    shl eax, 16
-    mov ax, [bp + 2] ; val_lower
+    mov dword eax, [bp + 4]     ;val
 
     xor edx, edx
     xor cx, cx

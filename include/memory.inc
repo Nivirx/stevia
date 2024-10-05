@@ -207,50 +207,6 @@ struc AddressRangeDescStruct_t
     .ExtType        resd 1
 endstruc
 
-; moves argument into eax then pushes lower 16bits then upper 16 bits of of argument to stack
-; eax is clobbered
-%macro PUSH_DWORD 1
-    mov eax, %1
-    push ax
-    shr eax, 16
-    push ax
-%endmacro
-
-; same as PUSH_DWORD except no arguments, pushes EAX directly
-%macro PUSH_DWORD_EAX 0
-    push ax
-    shr eax, 16
-    push ax
-%endmacro
-
-; pops upper 16bits then lower 16bits into eax
-; eax is clobbered
-%macro POP_DWORD_EAX 0
-    xor eax, eax
-    pop ax
-    shl eax, 16
-    pop ax
-%endmacro
-
-; moves data on stack referenced by bp to eax
-; stack must be organized as follows (tl;dr push lower 16bits first ie. PUSH_DWORD macro)
-; MOV_DWORD_EAX 2
-; STACK TOP (0x0)
-;   upper_uint16  [bp-4]
-;   lower_uint16 [bp-2]
-;   --- [bp] ---
-;   ...
-; STACK BOTTOM
-;
-; first argument == starting offset from bp for lower 16bits
-; BUG: needs fixed for cdecl16
-%macro MOV_DWORD_EAX 1
-    mov ax, [bp+(%1+2)]
-    shl eax, 16
-    mov ax, [bp+%1]
-    ; eax contains dword from stack
-%endmacro
-
 %macro DEBUG_HCF 0
     DEBUG_LOOP:
         hlt
