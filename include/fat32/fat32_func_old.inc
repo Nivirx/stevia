@@ -63,7 +63,6 @@ InitFATDriver:
     ret
 
 ; TODO: needs validation
-; load a file to the high memory buffer for the elf parser
 ; this involves using the low memory buffer for the bios call and moving the file sector by sector to high memory
 ;
 ; SFN is a 8.3 file name, all uppercase, and padded with spaces
