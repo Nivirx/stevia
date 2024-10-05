@@ -23,11 +23,27 @@
 [CPU KATMAI]
 jmp short init
 nop
-
 ; boot drive in dl
 ; active partition offset in si
+
+; ###############
+;
+; Headers/Includes/Definitions
+;
+; ###############
+%define __STEVIA_STAGE2
+
+
 %include "cdecl16.inc"
 %include "entry.inc"
+%include "config.inc"
+%include "mem.inc"
+%include "error_codes.inc"
+
+; ###############
+; End Section
+; ###############
+ALIGN 4, db 0x90
 init:
     cli                         ; We do not want to be interrupted
 
@@ -37,32 +53,36 @@ init:
     mov fs, ax                  ; *
     mov gs, ax                  ; *
 
-    mov ss, ax                  ; Set Stack Segment to 0
+    mov ss, ax                        ; Set Stack Segment to 0
     mov sp, EARLY_STACK_START         ; Set Stack Pointer
-
-    add sp, 0x4
-    mov ax, 0xDEAD
-    push word ax
-    mov ax, 0xBEEF
-    push word ax             ; mark top of stack for debuging
-
     mov bp, sp
+    sub sp, 0x20                      ; 32 bytes for local varibles
+
     sti
 
     jmp 0:main
 
-%include "config.inc"
-%include "error_codes.inc"
-%include "memory.inc"
-%include "kmem_func.inc"
-%include "partition_table.inc"
 
-%include "fat32/bpb.inc"
-%include "fat32/fat32_structures.inc"
+; ###############
+;
+; Extra/Shared Functions
+;
+; ###############
+
+%include "kmem_func.inc"
+%include "util/error_func.inc"
+
+; ###############
+; End Section
+; ###############
 
 main:
-    mov byte [fat32_ebpb + FAT32_ebpb_t.drive_number_8], dl
-    mov word [partition_offset], si
+    lea ax, [bp - 2]
+    mov [boot_drive_ptr], ax
+    lea ax, [bp - 4]
+    mov [partition_offset_ptr], ax
+    mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
+    mov word [bp - 4], si               ; partition_offset
 
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -138,7 +158,7 @@ hcf:
 ;
 ; ###############
 
-%include 'fat32/fat32_func_old.inc'
+%include 'fat32/fat32_sys.inc'
 
 ; ###############
 ;
@@ -306,17 +326,12 @@ NewLine_cstr:
     db StrCRLF_NUL
 BootTarget_str:
     db "BOOTI686BIN"
-
-; #############
-;
-; Locals
-;
-; #############
-
-partition_offset:
+boot_drive_ptr:
+    db 0x00
+stage2_resb_1:
+    db 0x00
+partition_offset_ptr:
     dw 0x0000
-
-
 
 ; GDT documentation below:
 ;

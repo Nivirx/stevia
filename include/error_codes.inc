@@ -18,6 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_ERROR_CODES
 
 ; Errors
 ; 12 Errors, 5 in use
@@ -77,3 +78,6 @@
 %define STEVIA_DEBUG_ERR      'X'
 %define STEVIA_DEBUG_UNIMPLEMENTED      'Y'
 %define STEVIA_DEBUG_HALT      'Z'
+
+%endif
+%define __INC_ERROR_CODES

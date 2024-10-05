@@ -18,6 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_E820MEMORY_MAP
 
 ; Address Range Descriptor Structure
 ;
@@ -116,6 +117,7 @@ struc AddressRangeDescStruct_t
     .ExtType        resd 1
 endstruc
 
+ALIGN 4, db 0x90
 GetMemoryMap:
     __CDECL16_ENTRY
     push es         ; save segment register
@@ -159,3 +161,6 @@ GetMemoryMap:
     pop es
     __CDECL16_EXIT
     ret
+    
+%endif
+%define __INC_E820MEMORY_MAP

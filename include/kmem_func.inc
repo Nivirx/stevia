@@ -17,15 +17,18 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
+
+%ifndef __INC_KMEM_FUNC
 %include 'cdecl16.inc'
 
-; uint8_t* kmemset(void* dest, uint8_t val, uint8_t len);
+; uint8_t* kmemset_byte(void* dst, uint8_t val, uint16_t len);
+ALIGN 4, db 0x90
 kmemset:
     __CDECL16_ENTRY
  .func:
     mov     cx, [bp + 8]   ; size_t len
     mov     al, [bp + 6]   ; uint8_t val
-    mov     di, [bp + 4]   ; void * ptr
+    mov     di, [bp + 4]   ; void * dst
 
     cld
     rep     stosb
@@ -36,6 +39,7 @@ kmemset:
 
 ; uint8_t* kmemset(uint8_t* dest, uint8_t* src, uint8_t len);
 ; not overlap safe
+ALIGN 4, db 0x90
 kmemcpy:
     __CDECL16_ENTRY
 .func:
@@ -49,3 +53,6 @@ kmemcpy:
 .endf:
     __CDECL16_EXIT
     ret
+
+%endif
+%define __INC_KMEM_FUNC

@@ -18,6 +18,13 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_FAT32_SYS
+
+%include "partition_table.inc"
+%include "fat32/bpb_offset_bx.inc"
+%include "fat32/fat32_structures.inc"
+
+ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_ENTRY
 .func:
@@ -28,9 +35,14 @@ InitFATDriver:
     mov dword [fat32_state + FAT32_State_t.active_dir_cluster_32], eax
 
 .calc_active_part:
-    mov ax, word [partition_offset]
-    mov bx, partition_table
-    add bx, ax                                                           ; bx points to the partition that was booted from
+    mov bx, [partition_offset_ptr]
+    mov ax, [bx + 0]
+    mov bx, ax
+    mov ax, [bx + 0]                       
+
+    mov dx, partition_table
+    add dx, ax                                                           ; dx points to the partition that was booted from
+    mov bx, dx                                                           ; set bx, should point at our partition
 
     mov eax, dword [bx + PartEntry_t.lba_start]
     mov dword [fat32_state + FAT32_State_t.active_drive_lba_32], eax
@@ -72,6 +84,7 @@ InitFATDriver:
 ; returns first cluster of file if found
 ; halts/errors if file is not found
 ; uint32_t SearchFATDIR(uint8_t* SFN);
+ALIGN 4, db 0x90
 SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
@@ -173,9 +186,16 @@ SearchFATDIR:
 ; uint32_t NextCluster(uint32_t active_cluster);
 ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
 ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
+ALIGN 4, db 0x90
 NextCluster:
     __CDECL16_ENTRY
 .func:
+    mov bx, [boot_drive_ptr]
+    mov ax, [bx + 0]
+    mov bx, ax
+    movzx ax, byte [bx + 0]                      ; 67h override would probably work but this is the 16bit way to do it
+    mov byte [bp - 2], al                        ; save boot drive as a local for easy access
+
     mov dword edx, [bp + 4]
     mov si, fat32_nc_data
 .calc_offset:
@@ -213,7 +233,14 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    ; load correct fat 
+    movzx ax, [bp - 2]
+    push ax
+
+    mov ax, 0x1
+    push ax
+
+    ; load correct fat
+    mov eax, dword [si + FAT32_NextClusterData_t.fat_sector]
     push dword eax
 
     mov ax, fat_buffer
@@ -221,10 +248,11 @@ NextCluster:
 
     xor ax, ax
     push ax
-    ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-    call read_disk_raw  ; read_disk_raw(0, fat_buffer, fat_sector)
-    add sp, 0x8
-
+    call read_disk_raw  
+    add sp, 0xC
+    ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
+;                         uint32_t lba,
+;                         uint16_t count, uint16_t drive_num)
 .read_cluster:
 ; next_cluster = fat_buffer[entry_offset]
     mov ebx, dword [si + FAT32_NextClusterData_t.entry_offset]
@@ -235,6 +263,7 @@ NextCluster:
     ret
 
 ; uint32_t ClusterToLBA(uint32_t cluster)
+ALIGN 4, db 0x90
 ClusterToLBA:
     __CDECL16_ENTRY
 .func:
@@ -249,25 +278,42 @@ ClusterToLBA:
     ret
 
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
+ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
+    mov bx, [boot_drive_ptr]
+    mov ax, [bx + 0]
+    mov bx, ax
+    movzx ax, byte [bx + 0]                      ; 67h override would probably work but this is the 16bit way to do it
+    mov byte [bp - 2], al                        ; save boot drive as a local for easy access
+
     mov dword eax, [bp + 8]
     push dword eax
     call ClusterToLBA    ; uint32_t ClusterToLBA(uint32_t cluster)
     add sp, 0x4         ; eax == LBA
     
 
-    push dword eax      ;uint32_t lba
+    movzx ax, [bp - 2]
+    push ax
 
-    mov dx, [bp + 4]    ; seg
-    push dx             ; uint16_t buf_offset
+    mov ax, 0x1
+    push ax
 
-    mov dx, [bp + 6]    ; offset
-    push dx             ; unit16_t segment
+    ; load correct fat
+    mov eax, dword [si + FAT32_NextClusterData_t.fat_sector]
+    push dword eax
 
-    call read_disk_raw ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint32_t lba)
-    add sp, 0x8
+    mov ax, fat_buffer
+    push ax
+
+    xor ax, ax
+    push ax
+    call read_disk_raw  
+    add sp, 0xC
 .endp:
     __CDECL16_EXIT
     ret
+
+%endif
+%define __INC_FAT32_SYS
