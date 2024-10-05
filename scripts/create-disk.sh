@@ -61,12 +61,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # create a DOS disk, with 1 FAT32 partition that is bootable, part1 starts at sector 2048
         sfdisk $ld < scripts/loop_setup.sfdisk
 
-        # partprobe the image
-        partprobe $ld
-
         # get first partition, this is sloppy might need to review this...
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.fat -v -n 'STEVIAFS' $firstpart
+        mkfs.fat -v -F32 -n 'STEVIAFS' $firstpart
 
         # copy MBR while preserving partition table
         dd if=$mbr_file of=$ld bs=1 count=440
@@ -89,9 +86,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             mkdir $mount_point
         fi
         mount $firstpart $mount_point
-        mkdir -p $mount_point/STEVIA
+        mkdir -p $mount_point
         if [ -e $boottest_file ]; then
-            cp -v $boottest_file $mount_point/STEVIA/BOOTi686.BIN
+            cp -v $boottest_file $mount_point/BOOTI686.BIN
         else
             echo "unable to find boot32.bin!"
             exit 3
@@ -100,6 +97,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # detach loop device
         umount $mount_point
         sync
+        sleep 1
         losetup -d $ld
 
         # chown to the real user to prevent issues with reading/writing the file later
