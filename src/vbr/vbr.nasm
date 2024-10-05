@@ -40,7 +40,7 @@ init:
     mov es, ax                  ; *
 
     mov ss, ax                  ; Set Stack Segment to 0
-    mov sp, STACK_START         ; Setup stack
+    mov sp, EARLY_STACK_START         ; Setup stack
     mov bp, sp                  ; base ptr = stack ptr
 
     mov bx, VBR_ENTRY           ; move Bx to the new start of the initial boot sector
