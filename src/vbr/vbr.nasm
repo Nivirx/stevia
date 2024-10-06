@@ -37,7 +37,6 @@ times 54 db 0x00
 ; ###############
 %define __STEVIA_VBR
 
-
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
@@ -81,17 +80,14 @@ init:
 
 ALIGN 4, db 0x90
 main:
-    mov byte [bp - 2], dl                 ; boot_drive
+    mov byte [bp - 2], dl            ; boot_drive
     mov [bp - 4], si                 ; part_offset
 
 .check_FAT_size:                     ; we only support a very specific setup of FAT32
     cmp dword [bsSectorHuge], 0      ; SectorsHuge will not be set if FAT12/16
     ja main.load_stage2
-
     ERROR VBR_ERROR_WRONG_FAT_SIZE
-
-; read sectors 1-63 to stage2 entry point
-.load_stage2:
+.load_stage2:                                          ; read sectors 1-63 to stage2 entry point
     mov ax, (fat32_bpb_SIZE + fat32_ebpb_SIZE)         ; size in byte
     push ax
     mov ax, (phy_bpb_start - 0x3)                      ; start of bpb - 0x3 for the jump short main at the start
@@ -140,10 +136,9 @@ main:
     jmp 0:0x7E00
 
 ; ###############
-;
-; Required BIOS functions
-;
+; Required BIOS function(s)
 ; ###############
+
 %include 'BIOS/func/ext_read.inc'
 
 %assign bytes_remaining (420 - ($ - $$))

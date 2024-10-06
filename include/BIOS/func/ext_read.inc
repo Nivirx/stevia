@@ -97,7 +97,7 @@ read_disk_raw:
 
     %ifdef __STEVIA_MBR
     ERROR MBR_ERROR_DISK_READ_ERR
-    %elifsef __STEVIA_VBR
+    %elifdef __STEVIA_VBR
     ERROR VBR_ERROR_DISK_READ_ERR
     %else
     ERROR STAGE2_MBR_DISK_READ_ERROR
