@@ -1,4 +1,4 @@
-; Copyright (c) 2023 Elaina Claus
+; Copyright (c) 2024 Elaina Claus
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
 ; of this software and associated documentation files (the "Software"), to deal
@@ -17,6 +17,8 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
+
+%ifndef __INC_PART_TABLE
 
 ; Partition table entry format
 ; Off.  Size.       Description
@@ -43,21 +45,5 @@ struc PartTable_t
     .partition4 resb 16
 endstruc
 
-
-;Offset	Size	    Description
-; 0	    1	    size of packet (16 bytes)
-; 1	    1	    always 0
-; 2	    2	    number of sectors to transfer (max 127 on some BIOSes)
-; 4	    4	    transfer buffer (0xFFFF:0xFFFF)
-; 8	    4	    lower 32-bits of starting 48-bit LBA
-; 12	4	    upper 32-bits of starting 48-bit LBA
-; needs to be aligned to a uint32_t
-struc LBAPkt_t
-    .size        resb 1
-    .res0        resb 1
-    .xfer_size   resw 1
-    .offset      resw 1
-    .segment     resw 1
-    .lower_lba   resd 1
-    .upper_lba   resd 1
-endstruc
+%endif
+%define __INC_PART_TABLE

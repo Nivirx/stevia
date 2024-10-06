@@ -23,17 +23,37 @@
 [CPU KATMAI]
 jmp short init
 nop
-%include "cdecl16.inc"              ; include calling convention macros for cdecl16
-%include "entry.inc"                ; defines with entry points for various stages & stack
-init:
-    cli                             ; We do not want to be interrupted
 
-    xor ax, ax                      ; 0 AX
-    mov ds, ax                      ; Set segment registers to 0
-    mov es, ax                      ; *
-    
-    mov ss, ax                      ; Set Stack Segment to 0
-    mov sp, STACK_START             
+; ###############
+;
+; Headers/Includes/Definitions
+;
+; ###############
+
+%define __STEVIA_MBR
+
+%include "cdecl16.inc"
+%include "entry.inc"
+%include "config.inc"
+%include "mem.inc"
+%include "error_codes.inc"
+%include "partition_table.inc"
+
+; ###############
+; End Section
+; ###############
+
+ALIGN 4, db 0x90
+init:
+    cli                         ; We do not want to be interrupted
+
+    xor ax, ax                  ; 0 AX
+    mov ds, ax                  ; Set segment registers to 0
+
+    mov ss, ax                  ; Set Stack Segment to 0
+    mov sp, EARLY_STACK_START   ; Setup stack
+    mov bp, sp                  ; base ptr = stack ptr
+    sub sp, 0x20                ; local varible space             
 
     mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
     mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)
@@ -43,16 +63,28 @@ init:
     sti
 
     jmp 0:main
-    nop
 
-%include "config.inc"
-%include "memory.inc"
+; ###############
+;
+; Extra/Shared Functions
+;
+; ###############
+
 %include "kmem_func.inc"
-%include "partition_table.inc"
-%include "errors.inc"
+%include "util/error_func.inc"
 
+; ###############
+; End Section
+; ###############
+
+;
+; bp - 2 : uint8_t boot_drive
+; bp - 4 : uint16_t part_offset
+;
+
+ALIGN 4, db 0x90
 main:
-    mov [boot_drive], dl            ; BIOS passes drive number in DL
+    mov byte [bp - 2], dl            ; BIOS passes drive number in DL
 
     .check_disk:
         cmp dl, 0x80
@@ -62,7 +94,7 @@ main:
     .check_extentions:
         xor ax, ax
         mov bx, 0x55AA
-        mov dl, byte [boot_drive]
+        mov dl, byte [bp - 2]
         int 0x13
         jnc main.find_active
         ERROR MBR_ERROR_NO_INT32E                         ; no extended function support
@@ -83,33 +115,33 @@ main:
         mov ax, bx
         sub ax, DiskSig                         ; leaves us with the offset relative from start of table
                                                 ; this gives us an offset from the begining of the partition table
-        mov word [part_offset], ax              ; update part_offset
+        mov word [bp - 4], ax                   ; update part_offset
     .read_data:
-        ;uint8_t read_disk_raw(size_t count, uint16_t buf_segment, uint16_t buf_offset, 
-        ;                      uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-        mov eax, dword [bx + PartEntry_t.lba_start]
-        ror eax, 16
-        push ax
+        movzx ax, byte [bp - 2]
+        push ax                                            ; drive_num
 
-        ror eax, 16
-        push ax         
+        mov ax, 0x1
+        push ax                                            ; count
 
-        mov ax, VBR_ENTRY
-        push ax
+        mov dword eax, dword [bx + PartEntry_t.lba_start]
+        push dword eax                                     ; lba
 
         xor ax, ax
-        push ax        ; segment = 0  
+        push ax                                            ; offset = 0
 
-        call read_vbr_raw
-        add sp, 0x8
+        mov ax, VBR_ENTRY
+        shr ax, 4
+        push ax                                            ; segment = 7C0
 
-        jnc main.goto_vbr
-        ERROR MBR_ERROR_DISK_READ_ERR                     ; error in LBA read
+        ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
+        ;                         uint32_t lba,
+        ;                         uint16_t count, uint16_t drive_num)
+        call read_disk_raw
+        add sp, 0xC
     .goto_vbr:
         cmp word [VBR_ENTRY + 0x1FE], 0xAA55
         je main.sig_ok
         ERROR MBR_ERROR_NO_VBR_SIG                        ; no signature present
-    
     .sig_ok:
         mov ax, partition_table_SIZE            ; 72 bytes of data
         push ax
@@ -120,86 +152,21 @@ main:
         call kmemcpy                            ; copy partition table to memory
         add sp, 0x6
 
-        xor ah, ah                              ; Set Video mode BIOS function
-        mov al, 0x02                            ; 16 color 80x25 Text mode
-        int 0x10                                ; Call video interrupt
-
-        mov ah, 0x05                            ; Select active display page BIOS function
-        xor al, al                              ; page 0
-        int 0x10                                ; call video interrupt
-
-        mov si, word [part_offset]
-        mov dl, byte [boot_drive]
+        mov si, word [bp - 4]
+        mov dl, byte [bp - 2]
         jmp 0:0x7C00
 
-; Wrapper for AH=0x42 INT13h (Extended Read)
+; ###############
 ;
-; BIOS call details
-; AH = 42h
-; DL = drive number
-; DS:SI -> disk address packet
+; BIOS Functions
 ;
-; Return:
-; CF clear if successful
-; AH = 00h
-; CF set on error
-; AH = error code
-; disk address packet's block count field set to number of blocks
-; successfully transferred
-;
-;
-; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, uint16_t lower_lower_lba, uint16_t upper_lower_lba)
-read_vbr_raw:
-    __CDECL16_ENTRY
-.func:                        
-    mov ax, 0x10
-    push ax             ; len = 16 bytes
-    xor ax, ax
-    push ax             ; val = 0
-    mov ax, lba_packet
-    push ax             ; dest = lba_packet address
-    call kmemset        
-    add sp, 0x06
+; ###############
 
-    mov byte [lba_packet + LBAPkt_t.size], 0x10
-    mov word [lba_packet + LBAPkt_t.xfer_size], 0x0001
+%include 'BIOS/func/ext_read.inc'
 
-    mov ax, [bp + 10]
-    shl eax, 16
-    mov ax, [bp + 8]
-    mov dword [lba_packet + LBAPkt_t.lower_lba], eax
-
-    mov ax, [bp + 6]
-    mov word [lba_packet + LBAPkt_t.offset], ax
-
-    mov ax, [bp + 4]
-    mov word [lba_packet + LBAPkt_t.segment], ax
-
-    mov si, lba_packet
-    mov ah, 0x42
-    mov dl, byte [boot_drive]
-    int 0x13
-    jnc .endf
-
-    ERROR MBR_ERROR_INT13h_EREAD_ERR
-.endf:
-    __CDECL16_EXIT
-    ret
-
-; #############
-;
-; Locals
-;
-; #############
-
-boot_drive:
-    db 0x00
-mbr_reserved1:
-    db 0x00
-
-; OFFSET from BEGINING of partition table, ie. DiskSig (-6 from PartEntry1)
-part_offset:
-    dw 0x0000
+; ###############
+; End Section
+; ###############
 
 %assign bytes_remaining (440 - ($ - $$))
 %warning MBR has bytes_remaining bytes remaining for code (MAX: 440 bytes)
