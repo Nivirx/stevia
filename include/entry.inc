@@ -1,4 +1,4 @@
-; Copyright (c) 2023 Elaina Claus
+; Copyright (c) 2024 Elaina Claus
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
 ; of this software and associated documentation files (the "Software"), to deal
@@ -18,9 +18,13 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_ENTRY
 
 ; 8KiB from 0x2500 -> 0x500
-%define STACK_START            0x2500
-%define MBR_ENTRY              0x7A00
-%define VBR_ENTRY              0x7C00
-%define STAGE2_ENTRY           0x7E00
+%define EARLY_STACK_START            0x2500
+%define MBR_ENTRY                    0x7A00
+%define VBR_ENTRY                    0x7C00
+%define STAGE2_ENTRY                 0x7E00
+
+%endif
+%define __INC_ENTRY

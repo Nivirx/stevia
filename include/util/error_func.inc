@@ -17,25 +17,47 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
-%ifnmacro __CDECL16_ENTRY
-%macro __CDECL16_ENTRY 0
-    push bp
-    mov bp, sp
-    sub sp, 0x20
 
-    push si
-    push di
-    push bx
+%ifndef __INC_ERROR_FUNC
+
+%macro ERROR 1
+    xor ax, ax
+    mov al, %1
+    jmp error
 %endmacro
-%endif
 
-%ifnmacro __CDECL16_EXIT
-%macro __CDECL16_EXIT 0
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
+%macro DEBUG_HCF 0
+    DEBUG_LOOP:
+        cli
+        hlt
+        jmp short DEBUG_LOOP
 %endmacro
+
+; pass error as ascii character in al, errors a-zA-Z or 0-9
+ALIGN 4, db 0x90
+error:
+    ; fs = 0xb800 => fs:0x0000 = 0xb8000
+    mov dx, 0xB800
+    mov fs, dx
+
+    mov dx, STEVIA_DEBUG_OK
+    cmp ax, dx
+    jge error.debug_err
+    mov dh, 0x4F                ; color 0x4F is white text/red background
+    jmp error.print
+.debug_err:
+    mov dh, 0x5F                ; debug case is white text/purple background
+
+    ; the characters are two bytes in the order of 0xb8000: byte c, byte attribute
+    ; since x86 is le, we store the attribute in the MSB of dx
+.print:
+    mov dl, al
+    mov word [fs:0x0000], dx
+    jmp error.stop
+
+.stop:
+    hlt
+    jmp short error.stop
+
 %endif
+%define __INC_ERROR_FUNC

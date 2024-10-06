@@ -18,6 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_FAT32_STRUCT
 
 ; ## FAT32 Info ##
 ;   total_sectors = bsSectorsHuge
@@ -230,4 +231,5 @@ endstruc
 ; LFN == RO | HIDDEN | SYSTEM | VOLID == 0x0F
 %define FAT32_ATTR_LFN          0x0F
 
-
+%endif
+%define __INC_FAT32_STRUCT

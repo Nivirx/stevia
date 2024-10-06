@@ -1,4 +1,4 @@
-; Copyright (c) 2023 Elaina Claus
+; Copyright (c) 2024 Elaina Claus
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
 ; of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,12 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
+%ifndef __INC_STEVIA_CONFIG
 
 %define SECTOR_SIZE             512
 %define STAGE2_SECTOR_COUNT    0x40
 ; 32 KiB
 %define MAX_STAGE2_BYTES      (SECTOR_SIZE * STAGE2_SECTOR_COUNT)
+
+%endif
+%define __INC_STEVIA_CONFIG

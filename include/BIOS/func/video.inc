@@ -17,25 +17,44 @@
 ; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
-%ifnmacro __CDECL16_ENTRY
-%macro __CDECL16_ENTRY 0
-    push bp
-    mov bp, sp
-    sub sp, 0x20
 
-    push si
-    push di
-    push bx
-%endmacro
+%ifndef __INC_VIDEO
+; Sets output to 80x25 16 color text mode via BIOS call
+; also clears screen
+; void SetTextMode(void)
+ALIGN 4, db 0x90
+SetTextMode:
+.prolog:
+    __CDECL16_ENTRY
+    pushf
+.func:
+    xor ah, ah                  ; Set Video mode BIOS function
+    mov al, 0x02                ; 16 color 80x25 Text mode
+    int 0x10                    ; Call video interrupt
+
+    mov ah, 0x05                ; Select active display page BIOS function
+    xor al, al                  ; page 0
+    int 0x10                    ; call video interrupt
+.endp:
+    popf
+    __CDECL16_EXIT
+    ret
+
+; disables blinking text mode cursor
+ALIGN 4, db 0x90
+disable_cursor:
+    __CDECL16_ENTRY
+.func:
+    mov dx, 0x3D4
+	mov al, 0xA	    ; low cursor shape register
+	out dx, al
+ 
+	inc dx
+	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
+	out dx, al
+.endp:
+    __CDECL16_EXIT
+    ret
+    
 %endif
-
-%ifnmacro __CDECL16_EXIT
-%macro __CDECL16_EXIT 0
-    pop bx
-    pop di
-    pop si
-
-    mov sp, bp
-    pop bp
-%endmacro
-%endif
+%define __INC_VIDEO
