@@ -21,6 +21,7 @@
 [BITS 16]
 [ORG 0x7A00]
 [CPU KATMAI]
+[WARNING -reloc-abs-word]
 jmp short init
 nop
 

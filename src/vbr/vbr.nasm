@@ -20,6 +20,7 @@
 [BITS 16]
 [ORG 0x7C00]
 [CPU KATMAI]
+[WARNING -reloc-abs-word]
 jmp short init
 nop
 phy_bpb_start:
