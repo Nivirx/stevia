@@ -138,15 +138,10 @@ main:
         ;                         uint16_t count, uint16_t drive_num)
         call read_disk_raw
         add sp, 0xC
-
-
-        jnc main.goto_vbr
-        ERROR MBR_ERROR_DISK_READ_ERR                     ; error in LBA read
     .goto_vbr:
         cmp word [VBR_ENTRY + 0x1FE], 0xAA55
         je main.sig_ok
         ERROR MBR_ERROR_NO_VBR_SIG                        ; no signature present
-    
     .sig_ok:
         mov ax, partition_table_SIZE            ; 72 bytes of data
         push ax
@@ -166,7 +161,12 @@ main:
 ; BIOS Functions
 ;
 ; ###############
+
 %include 'BIOS/func/ext_read.inc'
+
+; ###############
+; End Section
+; ###############
 
 %assign bytes_remaining (440 - ($ - $$))
 %warning MBR has bytes_remaining bytes remaining for code (MAX: 440 bytes)

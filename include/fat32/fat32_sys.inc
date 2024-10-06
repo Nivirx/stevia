@@ -36,9 +36,7 @@ InitFATDriver:
 
 .calc_active_part:
     mov bx, [partition_offset_ptr]
-    mov ax, [bx + 0]
-    mov bx, ax
-    mov ax, [bx + 0]                       
+    mov ax, [bx + 0]                     
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
@@ -66,7 +64,6 @@ InitFATDriver:
     mov dword [fat32_state + FAT32_State_t.first_data_sector_32], eax
 .get_first_root_dir:
     ; TODO
-
     jmp InitFATDriver.endp
 .error:
     ERROR STAGE2_FAT32_INIT_ERROR
@@ -74,7 +71,6 @@ InitFATDriver:
     __CDECL16_EXIT
     ret
 
-; TODO: needs validation
 ; this involves using the low memory buffer for the bios call and moving the file sector by sector to high memory
 ;
 ; SFN is a 8.3 file name, all uppercase, and padded with spaces
@@ -284,15 +280,13 @@ ReadFATCluster:
 .func:
     mov bx, [boot_drive_ptr]
     mov ax, [bx + 0]
-    mov bx, ax
-    movzx ax, byte [bx + 0]                      ; 67h override would probably work but this is the 16bit way to do it
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
 
     mov dword eax, [bp + 8]
     push dword eax
     call ClusterToLBA    ; uint32_t ClusterToLBA(uint32_t cluster)
     add sp, 0x4         ; eax == LBA
-    
+    mov dword [bp - 6], eax
 
     movzx ax, [bp - 2]
     push ax
@@ -300,8 +294,7 @@ ReadFATCluster:
     mov ax, 0x1
     push ax
 
-    ; load correct fat
-    mov eax, dword [si + FAT32_NextClusterData_t.fat_sector]
+    mov eax, dword [bp + 6]
     push dword eax
 
     mov ax, fat_buffer

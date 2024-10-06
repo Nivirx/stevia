@@ -23,16 +23,14 @@
 [CPU KATMAI]
 jmp short init
 nop
-; boot drive in dl
-; active partition offset in si
 
 ; ###############
 ;
 ; Headers/Includes/Definitions
 ;
 ; ###############
-%define __STEVIA_STAGE2
 
+%define __STEVIA_STAGE2
 
 %include "cdecl16.inc"
 %include "entry.inc"
@@ -43,6 +41,7 @@ nop
 ; ###############
 ; End Section
 ; ###############
+
 ALIGN 4, db 0x90
 init:
     cli                         ; We do not want to be interrupted
@@ -62,7 +61,6 @@ init:
 
     jmp 0:main
 
-
 ; ###############
 ;
 ; Extra/Shared Functions
@@ -76,6 +74,10 @@ init:
 ; End Section
 ; ###############
 
+;
+; bp - 2 : uint8_t boot_drive
+; bp - 4 : uint16_t part_offset
+;
 main:
     lea ax, [bp - 2]
     mov [boot_drive_ptr], ax
@@ -147,7 +149,6 @@ main:
     add sp, 0x2
     
     ERROR STEVIA_DEBUG_HALT
-
 hcf:
     hlt
     jmp short hcf
