@@ -21,7 +21,7 @@
 [BITS 32]
 [ORG 0x100000]
 [CPU KATMAI]
-jmp short init32
+jmp short (init32 - $$)         ; PI jump
 nop
 
 ;;;
