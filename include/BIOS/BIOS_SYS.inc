@@ -18,7 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-%include 'BIOS/func/a20enable.inc'
-%include 'BIOS/func/E820_memory_map.inc'
-%include 'BIOS/func/ext_read.inc'
-%include 'BIOS/func/video.inc'
+%include 'BIOS/func/a20enable.nasm'
+%include 'BIOS/func/E820_memory_map.nasm'
+%include 'BIOS/func/ext_read.nasm'
+%include 'BIOS/func/video.nasm'
