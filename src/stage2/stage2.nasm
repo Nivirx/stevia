@@ -21,8 +21,10 @@
 [BITS 16]
 [ORG 0X7E00]
 [CPU KATMAI]
+[WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
-[WARNING -reloc-abs-dword]
+[WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.
+
 %define __STEVIA_STAGE2
 
 __STAGE2_ENTRY:
@@ -70,8 +72,8 @@ init:
 ;
 ; ###############
 
-%include "kmem_func.inc"
-%include "util/error_func.inc"
+%include "util/kmem_func.nasm"
+%include "util/error_func.nasm"
 
 ; ###############
 ; End Section
@@ -154,7 +156,7 @@ main:
     ERROR STEVIA_DEBUG_HALT
 hcf:
     hlt
-    jmp short hcf
+    jmp short (hcf - $$)
 
 ; ###############
 ;
@@ -162,7 +164,7 @@ hcf:
 ;
 ; ###############
 
-%include 'fat32/fat32_sys.inc'
+%include 'fat32/FAT32_SYS.inc'
 
 ; ###############
 ;
@@ -170,7 +172,7 @@ hcf:
 ;
 ; ###############
 
-%include 'BIOS/BIOS_sys.inc'
+%include 'BIOS/BIOS_SYS.inc'
 
 ; ##############################
 ;

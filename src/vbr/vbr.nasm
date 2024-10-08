@@ -20,13 +20,14 @@
 [BITS 16]
 [ORG 0x7C00]
 [CPU KATMAI]
-[WARNING -reloc-abs-word]
+[WARNING -reloc-abs-byte]
+[WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_VBR
 
 __ENTRY:
-    jmp short (init_thunk - $$)
+    jmp short (init - $$)
     nop
-    
+
 phy_bpb_start:
 ; fill BPB area with 0x00 since we skip writing this part to disk
 ; but we need it for the 'jmp short entry; nop' above
@@ -75,8 +76,8 @@ init:
 ;
 ; ###############
 
-%include "kmem_func.inc"
-%include "util/error_func.inc"
+%include "util/kmem_func.nasm"
+%include "util/error_func.nasm"
 
 ; ###############
 ; End Section
@@ -143,7 +144,7 @@ main:
 ; Required BIOS function(s)
 ; ###############
 
-%include 'BIOS/func/ext_read.inc'
+%include 'BIOS/func/ext_read.nasm'
 
 %assign bytes_remaining (420 - ($ - $$))
 %warning VBR has bytes_remaining bytes remaining for code (MAX: 420 bytes)
