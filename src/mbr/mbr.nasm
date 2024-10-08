@@ -21,7 +21,9 @@
 [BITS 16]
 [ORG 0x7A00]
 [CPU KATMAI]
-[WARNING -reloc-abs-word]
+[WARNING -reloc-abs-byte]
+[WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
+
 %define __STEVIA_MBR
 
 jmp short (init - $$)
@@ -71,8 +73,8 @@ init:
 ;
 ; ###############
 
-%include "kmem_func.inc"
-%include "util/error_func.inc"
+%include "util/kmem_func.nasm"
+%include "util/error_func.nasm"
 
 ; ###############
 ; End Section
@@ -163,7 +165,7 @@ main:
 ;
 ; ###############
 
-%include 'BIOS/func/ext_read.inc'
+%include 'BIOS/func/ext_read.nasm'
 
 ; ###############
 ; End Section
