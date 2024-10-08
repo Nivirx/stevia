@@ -21,16 +21,10 @@
 %ifndef __INC_ERROR_FUNC
 
 %macro ERROR 1
-    xor ax, ax
-    mov al, %1
-    jmp error
-%endmacro
-
-%macro DEBUG_HCF 0
-    DEBUG_LOOP:
-        cli
-        hlt
-        jmp short DEBUG_LOOP
+    mov al, %1           ; al = 1 byte error code mapped to ascii values
+    db 0xEA              ; jmp far imm16:imm16
+    dw error             ; error_far_seg
+    dw 0x0000            ; error_far_ptr
 %endmacro
 
 ; pass error as ascii character in al, errors a-zA-Z or 0-9
@@ -38,26 +32,19 @@ ALIGN 4, db 0x90
 error:
     ; fs = 0xb800 => fs:0x0000 = 0xb8000
     mov dx, 0xB800
-    mov fs, dx
+    mov fs, dx                  ; F segment to 0xB800 = video memory 
 
-    mov dx, STEVIA_DEBUG_OK
-    cmp ax, dx
-    jge error.debug_err
-    mov dh, 0x4F                ; color 0x4F is white text/red background
-    jmp error.print
-.debug_err:
-    mov dh, 0x5F                ; debug case is white text/purple background
-
-    ; the characters are two bytes in the order of 0xb8000: byte c, byte attribute
-    ; since x86 is le, we store the attribute in the MSB of dx
+    cmp al, STEVIA_DEBUG_OK
+    jge short .debug            ; the 'letter >= W' (W, X, Y, Z) are used as special debug codes
+    mov ah, 0x4F                ; color 0x4F is white text/red background
+    jmp short .print
+.debug:
+    mov ah, 0x5F                ; debug case is white text/purple background
 .print:
-    mov dl, al
-    mov word [fs:0x0000], dx
-    jmp error.stop
-
-.stop:
+    mov word [fs:0x0000], ax    
+.halt:
     hlt
-    jmp short error.stop
+    jmp short .halt
 
 %endif
 %define __INC_ERROR_FUNC
