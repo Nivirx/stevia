@@ -22,7 +22,9 @@
 [ORG 0x7A00]
 [CPU KATMAI]
 [WARNING -reloc-abs-word]
-jmp short init
+%define __STEVIA_MBR
+
+jmp short (init - $$)
 nop
 
 ; ###############
@@ -30,8 +32,6 @@ nop
 ; Headers/Includes/Definitions
 ;
 ; ###############
-
-%define __STEVIA_MBR
 
 %include "cdecl16.inc"
 %include "entry.inc"

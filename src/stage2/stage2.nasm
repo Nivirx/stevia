@@ -23,7 +23,10 @@
 [CPU KATMAI]
 [WARNING -reloc-abs-word]
 [WARNING -reloc-abs-dword]
-jmp short init
+%define __STEVIA_STAGE2
+
+__STAGE2_ENTRY:
+jmp short (init - $$)
 nop
 
 ; ###############
@@ -31,8 +34,6 @@ nop
 ; Headers/Includes/Definitions
 ;
 ; ###############
-
-%define __STEVIA_STAGE2
 
 %include "cdecl16.inc"
 %include "entry.inc"

@@ -21,8 +21,12 @@
 [ORG 0x7C00]
 [CPU KATMAI]
 [WARNING -reloc-abs-word]
-jmp short init
-nop
+%define __STEVIA_VBR
+
+__ENTRY:
+    jmp short (init_thunk - $$)
+    nop
+    
 phy_bpb_start:
 ; fill BPB area with 0x00 since we skip writing this part to disk
 ; but we need it for the 'jmp short entry; nop' above
@@ -36,7 +40,6 @@ times 54 db 0x00
 ; Headers/Includes/Definitions
 ;
 ; ###############
-%define __STEVIA_VBR
 
 %include "cdecl16.inc"
 %include "entry.inc"
