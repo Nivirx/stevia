@@ -287,22 +287,50 @@ EnterUnrealMode:
     __CDECL16_ENTRY
 .func:
     cli                         ; no interrupts
-    push ds                     ; save real mode data selector
+    push ds                     ; save real mode data/stack selectors
+    push es
+    push fs
+    push gs
+    push ss
+
+    push cs                     ; save real mode code selector
     lgdt [unreal_gdt_info]
 
-    mov  eax, cr0               ; switch to pmode
+    mov eax, cr0               ; switch to pmode
     or al,1                     ; set pmode bit
-    mov  cr0, eax
+    mov cr0, eax
+    jmp $+2
 
-    jmp $+2                     ; clear instruction cache
-
-    mov  bx, 0x08               ; select descriptor 1
-    mov  ds, bx                 ; 8h = 1000b
-
+    ;jmp far 0x0008:EnterUnrealMode.load_cs
+    db 0xEA                               ; jmp far imm16:imm16
+    dw EnterUnrealMode.load_cs            ; error_far_ptr
+    dw 0x0008                             ; error_far_seg
+.load_cs:
+    mov bx, 0x10               ; select descriptor 2
+    mov ds, bx                 ; 10h = 0001_0000b
+                  
+    mov ss, bx
+    mov es, bx
+    mov fs, bx
+    mov gs, bx                  ; other data/stack to desc. 2
+    
     and al,0xFE                 ; back to realmode
-    mov  cr0, eax               ; by toggling bit again
+    mov cr0, eax                ; by toggling bit again
+    jmp $+2
 
-    pop ds                      ; get back old segment
+    pop ax                      ; save cs to ax to setup far jump
+    mov word [ds:__UNREAL_SEGMENT], ax
+    ;jmp far 0x0008:EnterUnrealMode.unload_cs
+    db 0xEA                               ; jmp far imm16:imm16
+    dw EnterUnrealMode.unload_cs          ; error_far_ptr
+__UNREAL_SEGMENT:
+    dw 0x0000                             ; error_far_seg
+EnterUnrealMode.unload_cs:
+    pop ss
+    pop gs
+    pop fs
+    pop es
+    pop ds                                ; get back old segments
     sti
 .endp:
     __CDECL16_EXIT
@@ -339,71 +367,7 @@ stage2_resb_1:
 partition_offset_ptr:
     dw 0x0000
 
-; GDT documentation below:
-;
-;    Pr: Present bit. This must be 1 for all valid selectors.
-;
-;    Privl: Privilege, 2 bits. Contains the ring level,
-;           0 = highest (kernel), 3 = lowest (user applications).
-;
-;    S: Descriptor type. This bit should be set for code or data segments
-;       and should be cleared for system segments (eg. a Task State Segment)
-;
-;    Ex: Executable bit. If 1 code in this segment can be executed
-;        ie. a code selector. If 0 it is a data selector.
-;
-;    DC: Direction bit/Conforming bit.
-;        Direction bit for data selectors: Tells the direction.
-;        0 the segment grows up. 1 the segment grows down, ie. the offset has to be greater than the limit.
-;
-;        Conforming bit for code selectors:
-;            If 1 code in this segment can be executed from an equal or lower privilege level.
-;               For example, code in ring 3 can far-jump to conforming code in a ring 2 segment.
-;               The privl-bits represent the highest privilege level that is allowed to execute the segment.
-;                   For example, code in ring 0 cannot far-jump to a conforming code segment with privl==0x2
-;                   while code in ring 2 and 3 can. Note that the privilege level remains the same
-;                   ie. a far-jump form ring 3 to a privl==2-segment remains in ring 3 after the jump.
-;
-;            If 0 code in this segment can only be executed from the ring set in privl.
-;
-;    RW: Readable bit/Writable bit.
-;        Readable bit for code selectors: Whether read access for this segment is allowed. Write access is never allowed for code segments.
-;        Writable bit for data selectors: Whether write access for this segment is allowed. Read access is always allowed for data segments.
-;
-;    Ac: Accessed bit. Just set to 0. The CPU sets this to 1 when the segment is accessed.
-;
-;    Gr: Granularity bit. If 0 the limit is in 1 B blocks (byte granularity), if 1 the limit is in 4 KiB blocks (page granularity).
-;
-;    Sz: Size bit. If 0 the selector defines 16 bit protected mode. If 1 it defines 32 bit protected mode.
-;        You can have both 16 bit and 32 bit selectors at once.
-;
-;    AvL: Availible to software bit, the CPU does not use this field and software can read/write to it
-;
-;    D/B bit: The default operand-size bit is found in code-segment and data-segment descriptors but not in system-segment descriptors. Setting
-;              this bit to 1 indicates a 32-bit default operand size, and clearing it indicates a 16-bit default size.
-;
-;    E bit: Expand down bit: Setting this bit to 1 identifies the data segment as expand-down.
-;           In expand-down segments, the segment limit defines the lower segment boundary while the base is the upper boundary
-;
-; A GDT entry is 8 bytes and is constructed as follows:
-; First DWORD
-;   0-15	Limit 0:15	First 16 bits in the segment limiter
-;   16-31	Base 0:15	First 16 bits in the base address
-;
-; 2nd DWORD
-;
-;   0:7	    Base 16:23	Bits 16-23 in the base address
-;   8:12	S/Type	    Segment type and attributes, S = bit 12, Type = 8:11, Type is either [1, DC, RW, Ac] <code> or [0, E, RW, Ac] <data>
-;   13:14	Privl	    0 = Highest privilege (OS), 3 = Lowest privilege (User applications)
-;   15	    Pr	        Set to 1 if segment is present
-;   16:19	Limit 16:19	Bits 16-19 in the segment limiter
-;   20:22	Attributes	Different attributes, depending on the segment type
-;   23	    Gr	        Used together with the limiter, to determine the size of the segment
-;   24:31	Base 24:31	The last 24-31 bits in the base address
-;
-;
-;
-
+; see docs/gdt.txt for a quick refresher on GDT 
 ALIGN 4, db 0
 unreal_gdt_info:
     unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
@@ -413,11 +377,17 @@ unreal_gdt_start:
     ; entry 0
     dq 0                    ; first entry is null
 
-    ; entry 1 (4 GiB flat data map)
-    ; first dword
+    ; entry 1 (4 GiB flat code map)
+    dw 0xFFFF            ; Segment Limit 15:0 (Same large limit as data segment)
+    dw 0x0000            ; Base Address 15:0
+    db 0x00              ; Base Address 23:16
+    db 1001_1010b        ; Access Byte: 1001_1010b for executable code
+    db 1000_1111b        ; Flags and Segment Limit 19:16 (Same as data segment)
+    db 0x00              ; Base Address 31:24
+
+    ; entry 2 (4 GiB flat data map)
     dw 0xFFFF               ; 0:15 limit
     dw 0x0000               ; 0:15 base
-    ; second dword
     db 0x00                 ; 16:23 base
     db 1001_0010b            ; bit 0:4 = S/Type, [1, DC, RW, Ac] <code> or [0, E, RW, Ac] <data>
                             ; bit 5:6 = Privl
@@ -441,7 +411,7 @@ unreal_gdt_start:
     ; Pr = 1, segment is present
     ; AVL = 0, ignore this field
     ; D/B bit = 0, 16bit code/stack
-    ; Gr = 1, multiply limit by 4096
+    ; Gr = 1, multiply limit by 4096 
 unreal_gdt_end:
 
 ALIGN 4, db 0
@@ -453,18 +423,32 @@ gdt32_info:
 gdt32_start:
     dq 0
     .gdt32_code:
+        dw 0xFFFF       ; code segment (RX)
+        dw 0x0000
+        db 0x00
+        db 1001_1000b   ; Access: readable, executable
+        db 1100_1111b   ; 4KB granularity, 32-bit
+        db 0x00
+    .gdt32_data:        ; data segment (RW)
         dw 0xFFFF
         dw 0x0000
         db 0x00
-        db 1001_1000b
-        db 1100_1111b
+        db 1001_0010b    ; Access: readable, writable
+        db 1100_1111b    ; 4KB granularity, 32-bit
         db 0x00
-    .gdt32_data:
+    .gdt32_stack:        ; Stack segment (RW)
         dw 0xFFFF
         dw 0x0000
         db 0x00
-        db 1001_0010b
-        db 1100_1111b
+        db 1001_0010b    ; Access: readable, writable
+        db 1100_1111b    ; 4KB granularity, 32-bit
+        db 0x00
+    .gdt32_ro_data:      ; Read-only data segment (RO)
+        dw 0xFFFF
+        dw 0x0000
+        db 0x00
+        db 1001_0000b    ; Access: readable, not writable
+        db 1100_1111b    ; 4KB granularity, 32-bit
         db 0x00
 gdt32_end:
 
