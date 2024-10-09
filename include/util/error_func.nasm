@@ -30,10 +30,6 @@
 ; pass error as ascii character in al, errors a-zA-Z or 0-9
 ALIGN 4, db 0x90
 error:
-    ; fs = 0xb800 => fs:0x0000 = 0xb8000
-    mov dx, 0xB800
-    mov fs, dx                  ; F segment to 0xB800 = video memory 
-
     cmp al, STEVIA_DEBUG_OK
     jge short .debug            ; the 'letter >= W' (W, X, Y, Z) are used as special debug codes
     mov ah, 0x4F                ; color 0x4F is white text/red background
@@ -41,8 +37,11 @@ error:
 .debug:
     mov ah, 0x5F                ; debug case is white text/purple background
 .print:
-    mov word [fs:0x0000], ax    
+    mov dx, 0xB800
+    mov gs, dx                  
+    mov word [gs:0x0000], ax    ; 0xB8000 = video memory
 .halt:
+    cli
     hlt
     jmp short .halt
 
