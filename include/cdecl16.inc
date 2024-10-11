@@ -21,7 +21,7 @@
 %macro __CDECL16_ENTRY 0
     push bp
     mov bp, sp
-    sub sp, 0x20
+    sub sp, 0x10
 
     push si
     push di
