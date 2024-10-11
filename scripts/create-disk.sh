@@ -69,7 +69,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
         # get first partition, this is sloppy might need to review this...
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
-        mkfs.fat -v -F32 -n 'STEVIAFS' $firstpart
+        mkfs.fat -v -F32 -s 1 -n 'STEVIAFS' $firstpart
 
         # copy MBR while preserving partition table
         if ! dd if=$mbr_file of=$ld bs=1 count=440; then
@@ -97,6 +97,12 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # copy 0xAA55
         if ! dd if=$vbr_file of=$firstpart bs=1 seek=510 skip=510 count=2; then
             echo "Failed to write VBR to disk. (part 3)" >&2
+            exit 1
+        fi
+
+        # write backup VBR
+        if ! dd if=$firstpart of=$firstpart bs=$disk_sector_size count=1 seek=6; then
+            echo "Failed to copy VBR (sector 1) to backup VBR." >&2
             exit 1
         fi
 
