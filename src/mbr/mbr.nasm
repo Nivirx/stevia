@@ -35,6 +35,7 @@ nop
 ;
 ; ###############
 
+%include "util/bochs_magic.inc"
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
