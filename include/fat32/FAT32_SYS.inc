@@ -237,7 +237,7 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    movzx ax, [bp - 2]
+    movzx ax, byte [bp - 2]
     push ax
 
     mov ax, 0x1
