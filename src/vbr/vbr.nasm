@@ -42,6 +42,7 @@ times 54 db 0x00
 ;
 ; ###############
 
+%include "util/bochs_magic.inc"
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
