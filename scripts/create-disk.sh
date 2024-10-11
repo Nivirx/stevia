@@ -66,20 +66,39 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         mkfs.fat -v -F32 -n 'STEVIAFS' $firstpart
 
         # copy MBR while preserving partition table
-        dd if=$mbr_file of=$ld bs=1 count=440
+        if ! dd if=$mbr_file of=$ld bs=1 count=440; then
+            echo "Failed to write MBR to disk. (part 1)" >&2
+            exit 1
+        fi
+
         # copy MBR 0xAA55
-        dd if=$mbr_file of=$ld bs=1 seek=510 skip=510 count=2
+        if ! dd if=$mbr_file of=$ld bs=1 seek=510 skip=510 count=2; then
+            echo "Failed to write MBR to disk. (part 2)" >&2
+            exit 1
+        fi
 
         # copy VBR to partition 1 while preserving partition information
         # copy jmp short entry; nop
-        dd if=$vbr_file of=$firstpart bs=1 count=3
+        if ! dd if=$vbr_file of=$firstpart bs=1 count=3; then
+            echo "Failed to write VBR to disk. (part 1)" >&2
+            exit 1
+        fi
         # copy bootcode
-        dd if=$vbr_file of=$firstpart bs=1 seek=90 skip=90 count=420
+        if ! dd if=$vbr_file of=$firstpart bs=1 seek=90 skip=90 count=420; then
+            echo "Failed to write VBR to disk. (part 2)" >&2
+            exit 1
+        fi
         # copy 0xAA55
-        dd if=$vbr_file of=$firstpart bs=1 seek=510 skip=510 count=2
+        if ! dd if=$vbr_file of=$firstpart bs=1 seek=510 skip=510 count=2; then
+            echo "Failed to write VBR to disk. (part 3)" >&2
+            exit 1
+        fi
 
         #stage2 to sectors 1-64
-        dd if=$stage2_file of=$ld bs=$disk_sector_size seek=1
+        if ! dd if=$stage2_file of=$ld bs=$disk_sector_size seek=1; then
+            echo "Failed to write Stage2 to disk." >&2
+            exit 1
+        fi
 
         # copy boot32 boot test file to disk image
         if ! [ -e $mount_point ]; then
