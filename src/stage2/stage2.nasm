@@ -359,7 +359,7 @@ IntToHex_table:
 NewLine_cstr:
     db StrCRLF_NUL
 BootTarget_str:
-    db "BOOTI686BIN"
+    db "BOOT    BIN"
 boot_drive_ptr:
     db 0x00
 stage2_resb_1:
