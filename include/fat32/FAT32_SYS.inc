@@ -28,11 +28,14 @@ ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_ENTRY
 .func:
-    xor eax, eax
-    mov dword [fat32_state + FAT32_State_t.active_cluster_32], eax
-    mov dword [fat32_state + FAT32_State_t.active_FAT_cluster_32], eax
-    mov dword [fat32_state + FAT32_State_t.first_root_dir_sector_32], eax
-    mov dword [fat32_state + FAT32_State_t.active_dir_cluster_32], eax
+    mov ax, fat32_state_SIZE
+    push ax                     ; length of fat32_state structure
+    xor ax, ax
+    push ax                     ; init fat32_state with zero
+    mov ax, fat32_state
+    push ax                     ; address of structure
+    call kmemset
+    sub sp, 0x6
 
 .calc_active_part:
     mov bx, [partition_offset_ptr]
