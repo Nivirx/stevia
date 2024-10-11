@@ -39,3 +39,19 @@
     pop bp
 %endmacro
 %endif
+
+%ifnmacro __CDECL16_CALLER_SAVE
+%macro __CDECL16_CALLER_SAVE 0
+    push ax
+    push cx
+    push dx
+%endmacro
+%endif
+
+%ifnmacro __CDECL16_CALLER_RESTORE
+%macro __CDECL16_CALLER_RESTORE 0
+    pop dx
+    pop cx
+    pop ax
+%endmacro
+%endif
