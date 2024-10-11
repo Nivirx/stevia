@@ -21,7 +21,7 @@
 # SOFTWARE.
 
 if ! [ $(id -u) = 0 ]; then
-   echo "Script must be run as root!"
+   echo "Script must be run as root!" >&2
    exit 1
 fi
 
@@ -43,12 +43,18 @@ disk_sector_size=512
 
 if ! [ -e $disk_tmp_file ]; then
     # create raw disk image
-    dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size
+    if ! dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size; then
+        echo "Failed creating blank disk image." >&2
+        exit 1
+    fi
     sync
 else
     echo "Removing old disk image..."
     rm -rfv $disk_tmp_file
-    dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size
+    if ! dd if=/dev/zero of=$disk_tmp_file bs=$disk_sector_size count=$disk_size; then
+        echo "Failed creating blank disk image." >&2
+        exit 1
+    fi
     sync
 fi
 
@@ -105,12 +111,19 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             mkdir $mount_point
         fi
         mount $firstpart $mount_point
-        mkdir -p $mount_point
+
+        # ensure mountpoint is actually a mountpoint
+        if ! mountpoint -q $mount_point; then
+            echo "Failed to mount partition at $mount_point." >&2
+            exit 1
+        fi
+
+        # copy kernel to filesystem 
         if [ -e $boottest_file ]; then
             cp -v $boottest_file $mount_point/BOOTI686.BIN
         else
-            echo "unable to find boot32.bin!"
-            exit 3
+            echo "Failed to write $boottest_file to disk image" >&2
+            exit 1
         fi
 
         # detach loop device
@@ -126,8 +139,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         chown --from=root:root --reference=LICENSE.md $disk_tmp_file
 
     else
-        echo "unable to find MBR/VBR binaries!"
-        exit 2
+        echo "unable to find MBR/VBR binaries!" >&2
+        exit 1
     fi
 # requires util-linux from homebrew
 elif [[ "$OSTYPE" == "darwin"* ]]; then
