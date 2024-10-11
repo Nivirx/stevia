@@ -44,6 +44,13 @@ nop
 %include "mem.inc"
 %include "error_codes.inc"
 
+%macro print_string 1
+    mov ax, %1
+    push ax
+    call PrintString
+    add sp, 0x2
+%endmacro
+
 ; ###############
 ; End Section
 ; ###############
@@ -101,34 +108,34 @@ main:
 .signature_present:
     call SetTextMode
     call disable_cursor
-    __PRINT_CSTR HelloPrompt
+    print_string HelloPrompt_cstr
     
     ; enable A20 gate
     call EnableA20
-    __PRINT_CSTR A20_Enabled
+    print_string A20_Enabled_OK_cstr
 
     ; enter unreal mode
     call EnterUnrealMode
-    __PRINT_CSTR UnrealMode_OK
+    print_string UnrealMode_OK_cstr
 
     ; get system memory map
     call GetMemoryMap
-    __PRINT_CSTR MemoryMap_OK
+    print_string MemoryMap_OK_cstr
 
     ; FAT Driver setup
     call InitFATDriver
-    __PRINT_CSTR InitFATSYS_OK
+    print_string InitFATSYS_OK_cstr
 
     ;
     ; Find first cluster of bootable file
     ;
     call SearchFATDIR
     push dword eax
-    __PRINT_CSTR FileFound_OK
+    print_string FileFound_OK_cstr
     push dword eax
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
     add sp, 0x4
-    __PRINT_CSTR NewLine
+    print_string NewLine_cstr
     
 hcf:
     hlt
@@ -160,15 +167,6 @@ partition_offset_ptr:
 ; SYSTEM CONFIGURATION FUNCTIONS
 ;
 ; ##############################
-
-%ifnmacro __PRINT_CSTR
-        %macro __PRINT_CSTR 1
-            lea ax, [%1_cstr]
-            push ax
-            call PrintString
-            add sp, 0x2
-        %endmacro
-%endif
 
 ; Prints a C-Style string (null terminated) using BIOS vga teletype call
 ; void PrintString(char* buf)
@@ -339,7 +337,7 @@ EnterUnrealMode.unload_cs:
     ALIGN 4
     %1_str:
         db %2
-    %define str_length %strlen(%2)       ; string
+    %define str_len %strlen(%2)       ; string
     %1_str_len:
         dd str_len
 %endmacro
@@ -351,7 +349,7 @@ EnterUnrealMode.unload_cs:
 %define CRLF_NUL 0Dh, 0Ah, 00h
     ALIGN 4
     %1_cstr:
-        db %2, StrCRLF_NUL
+        db %2, CRLF_NUL
 %endmacro
 
 define_cstr HelloPrompt, "Hello from Stevia Stage2!"
