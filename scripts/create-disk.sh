@@ -71,6 +71,10 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         firstpart=$(lsblk -ilp -o NAME $ld | tr '\n' ' ' | awk '{print $3}')
         mkfs.fat -v -F32 -s 1 -n 'STEVIAFS' $firstpart
 
+        #
+        # MBR setup
+        #
+
         # copy MBR while preserving partition table
         if ! dd if=$mbr_file of=$ld bs=1 count=440; then
             echo "Failed to write MBR to disk. (part 1)" >&2
@@ -82,6 +86,10 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo "Failed to write MBR to disk. (part 2)" >&2
             exit 1
         fi
+
+        #
+        # VBR Setup & backup VBR
+        # 
 
         # copy VBR to partition 1 while preserving partition information
         # copy jmp short entry; nop
@@ -105,6 +113,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo "Failed to copy VBR (sector 1) to backup VBR." >&2
             exit 1
         fi
+
+
+        #
+        # Stage2 Setup
+        #
 
         #stage2 to sectors 1-64
         if ! dd if=$stage2_file of=$ld bs=$disk_sector_size seek=1; then
@@ -131,6 +144,10 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo "Failed to write $boottest_file to disk image" >&2
             exit 1
         fi
+
+        #
+        # Final Cleanup
+        #
 
         # detach loop device
         umount $mount_point
