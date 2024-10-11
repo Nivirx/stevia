@@ -139,7 +139,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
         # copy kernel to filesystem 
         if [ -e $boottest_file ]; then
-            cp -v $boottest_file $mount_point/BOOTI686.BIN
+            cp -v $boottest_file $mount_point/BOOT.BIN
         else
             echo "Failed to write $boottest_file to disk image" >&2
             exit 1
