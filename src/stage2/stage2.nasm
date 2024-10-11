@@ -37,6 +37,7 @@ nop
 ;
 ; ###############
 
+%include "util/bochs_magic.inc"
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
@@ -82,78 +83,53 @@ init:
 ;
 ; bp - 2 : uint8_t boot_drive
 ; bp - 4 : uint16_t part_offset
-;
+ALIGN 4, db 0x90
 main:
     lea ax, [bp - 2]
     mov [boot_drive_ptr], ax
     lea ax, [bp - 4]
-    mov [partition_offset_ptr], ax
+    mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
+
     mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
     mov word [bp - 4], si               ; partition_offset
 
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
     je main.signature_present
-
     ERROR STAGE2_SIGNATURE_MISSING
 
 .signature_present:
     call SetTextMode
     call disable_cursor
-
-    lea ax, [HelloPrompt_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
-
+    __PRINT_CSTR HelloPrompt
+    
     ; enable A20 gate
     call EnableA20
-    
-    lea ax, [A20_Enabled_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
+    __PRINT_CSTR A20_Enabled
 
     ; enter unreal mode
     call EnterUnrealMode
-
-    lea ax, [UnrealMode_OK_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
+    __PRINT_CSTR UnrealMode_OK
 
     ; get system memory map
     call GetMemoryMap
-
-    lea ax, [MemoryMap_OK_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
+    __PRINT_CSTR MemoryMap_OK
 
     ; FAT Driver setup
     call InitFATDriver
+    __PRINT_CSTR InitFATSYS_OK
 
     ;
     ; Find first cluster of bootable file
     ;
     call SearchFATDIR
     push dword eax
-
-    lea ax, [FileFound_OK_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
-
+    __PRINT_CSTR FileFound_OK
     push dword eax
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
     add sp, 0x4
-
-    lea ax, [NewLine_cstr]
-    push ax
-    call PrintString
-    add sp, 0x2
+    __PRINT_CSTR NewLine
     
-    ERROR STEVIA_DEBUG_HALT
 hcf:
     hlt
     jmp short (hcf - $$)
@@ -163,6 +139,11 @@ hcf:
 ; FAT32 Driver
 ;
 ; ###############
+
+boot_drive_ptr:
+    dw 0x0000
+partition_offset_ptr:
+    dw 0x0000
 
 %include 'fat32/FAT32_SYS.inc'
 
@@ -180,8 +161,18 @@ hcf:
 ;
 ; ##############################
 
+%ifnmacro __PRINT_CSTR
+        %macro __PRINT_CSTR 1
+            lea ax, [%1_cstr]
+            push ax
+            call PrintString
+            add sp, 0x2
+        %endmacro
+%endif
+
 ; Prints a C-Style string (null terminated) using BIOS vga teletype call
 ; void PrintString(char* buf)
+ALIGN 4, db 0x90
 PrintString:
     __CDECL16_ENTRY
     mov di, [bp + 4]    ; first arg is char* 
@@ -214,6 +205,7 @@ PrintString:
 
 ; Prints a single character
 ; void PrintCharacter(char c);
+ALIGN 4, db 0x90
 PrintCharacter:
     __CDECL16_ENTRY
 .func:
@@ -231,6 +223,7 @@ PrintCharacter:
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
 ; prints the hex representation of of val
 ; void PrintDWORD(uint32_t val);
+ALIGN 4, db 0x90
 PrintDWORD:
     __CDECL16_ENTRY
 .func: 
@@ -282,7 +275,7 @@ PrintDWORD:
 ; SYSTEM CONFIGURATION FUNCTIONS
 ;
 ; ##############################
-
+ALIGN 4, db 0x90
 EnterUnrealMode:
     __CDECL16_ENTRY
 .func:
@@ -342,28 +335,39 @@ EnterUnrealMode.unload_cs:
 ;
 ; #############
 
-%define StrCRLF_NUL 0Dh, 0Ah, 00h
+%macro define_str 2
+    ALIGN 4
+    %1_str:
+        db %2
+    %define str_length %strlen(%2)       ; string
+    %1_str_len:
+        dd str_len
+%endmacro
 
-HelloPrompt_cstr:
-    db 'Stevia Stage2', StrCRLF_NUL
-A20_Enabled_cstr:
-    db 'A20 Enabled OK', StrCRLF_NUL
-MemoryMap_OK_cstr:
-    db 'Memory map OK', StrCRLF_NUL
-UnrealMode_OK_cstr:
-    db 'Unreal mode OK', StrCRLF_NUL
-FileFound_OK_cstr:
-    db 'Found SFN entry for bootable binary, first cluster -> ', 00h
+; TODO: technically this is a cstr but it splices a return and newline on the end
+; TODO: this probably should be seperated out and the printing functionality should
+; TODO: place that newline and return
+%macro define_cstr 2
+%define CRLF_NUL 0Dh, 0Ah, 00h
+    ALIGN 4
+    %1_cstr:
+        db %2, StrCRLF_NUL
+%endmacro
+
+define_cstr HelloPrompt, "Hello from Stevia Stage2!"
+define_cstr A20_Enabled_OK, "A20 Enabled OK"
+define_cstr MemoryMap_OK, "Memory map OK"
+define_cstr UnrealMode_OK, "Unreal mode OK"
+define_cstr FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
+define_cstr InitFATSYS_OK, "FAT32 Driver Init..."
+define_cstr NewLine, ""
+
+
+define_str BootTarget, "BOOT    BIN"
+
+ALIGN 4
 IntToHex_table:
     db '0123456789ABCDEF'
-NewLine_cstr:
-    db StrCRLF_NUL
-BootTarget_str:
-    db "BOOT    BIN"
-boot_drive_ptr:
-    dw 0x0000
-partition_offset_ptr:
-    dw 0x0000
 
 ; see docs/gdt.txt for a quick refresher on GDT 
 ALIGN 4, db 0
@@ -449,6 +453,15 @@ gdt32_start:
         db 1100_1111b    ; 4KB granularity, 32-bit
         db 0x00
 gdt32_end:
+
+ALIGN 8
+version_magic:
+    db "Stevia Stage2 built with NASM - ", __NASM_VER__, 00h
+
+ALIGN 8
+datetime_magic:
+    db 'Assembled - ', __DATE__, ' ', __TIME__, 00h
+
 
 %assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - ($ - $$))
 %warning STAGE2 has bytes_remaining bytes remaining for code (MAX: MAX_STAGE2_BYTES)
