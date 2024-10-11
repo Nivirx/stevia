@@ -136,8 +136,8 @@ main:
     ERROR VBR_ERROR_NO_SIGNATURE          ; no signature present in stage2
     
 .sig_ok:
-    mov si, [bp - 4]
-    mov dx, [bp - 2]
+    mov si, word [bp - 4]
+    mov dl, byte [bp - 2]
     jmp 0:0x7E00
 
 ; ###############

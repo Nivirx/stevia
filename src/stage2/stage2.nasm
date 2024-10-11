@@ -361,9 +361,7 @@ NewLine_cstr:
 BootTarget_str:
     db "BOOT    BIN"
 boot_drive_ptr:
-    db 0x00
-stage2_resb_1:
-    db 0x00
+    dw 0x0000
 partition_offset_ptr:
     dw 0x0000
 
