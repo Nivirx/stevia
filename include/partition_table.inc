@@ -34,15 +34,15 @@ struc PartEntry_t
     .chs_start  resb 3
     .part_type  resb 1
     .chs_end    resb 3
-    .lba_start  resb 4
-    .lba_length resb 4
+    .lba_start  resd 1
+    .lba_length resd 1
 endstruc
 
 struc PartTable_t
-    .partition1 resb 16
-    .partition2 resb 16
-    .partition3 resb 16
-    .partition4 resb 16
+    .partition1 resb PartEntry_t_size
+    .partition2 resb PartEntry_t_size
+    .partition3 resb PartEntry_t_size
+    .partition4 resb PartEntry_t_size
 endstruc
 
 %endif
