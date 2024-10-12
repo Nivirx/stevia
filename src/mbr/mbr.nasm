@@ -25,14 +25,11 @@
 [WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
 [map all mbr.map]
 %define __STEVIA_MBR
-
 jmp short (init - $$)
 nop
 
 ; ###############
-;
 ; Headers/Includes/Definitions
-;
 ; ###############
 
 %include "util/bochs_magic.inc"
@@ -43,11 +40,7 @@ nop
 %include "error_codes.inc"
 %include "partition_table.inc"
 
-; ###############
-; End Section
-; ###############
-
-ALIGN 4, db 0x90
+ALIGN 4
 init:
     cli                         ; We do not want to be interrupted
 
@@ -69,23 +62,15 @@ init:
     jmp 0:main
 
 ; ###############
-;
 ; Extra/Shared Functions
-;
 ; ###############
 
 %include "util/kmem_func.nasm"
 %include "util/error_func.nasm"
 
-; ###############
-; End Section
-; ###############
-
 ;
 ; bp - 2 : uint8_t boot_drive
 ; bp - 4 : uint16_t part_offset
-;
-
 ALIGN 4, db 0x90
 main:
     mov byte [bp - 2], dl            ; BIOS passes drive number in DL
@@ -158,7 +143,7 @@ main:
 
         mov si, word [bp - 4]
         mov dl, byte [bp - 2]
-        jmp 0:0x7C00
+        jmp word 0x0000:0x7C00
 
 ; ###############
 ;
@@ -167,10 +152,6 @@ main:
 ; ###############
 
 %include 'BIOS/func/ext_read.nasm'
-
-; ###############
-; End Section
-; ###############
 
 %assign bytes_remaining (440 - ($ - $$))
 %warning MBR has bytes_remaining bytes remaining for code (MAX: 440 bytes)

@@ -24,7 +24,7 @@
 [WARNING -reloc-abs-word]
 [map all vbr.map]                   ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_VBR
-
+section .text
 __ENTRY:
     jmp short (init - $$)
     nop
@@ -51,11 +51,8 @@ times 54 db 0x00
 %include "error_codes.inc"
 %include "fat32/bpb_offset_bx.inc"
 
-; ###############
-; End Section
-; ###############
 
-ALIGN 4, db 0x90
+ALIGN 4
 init:
     cli                         ; We do not want to be interrupted
 
@@ -85,6 +82,9 @@ init:
 ; End Section
 ; ###############
 
+;
+; byte boot_drive @ bp - 2
+; word part_offset @ bp - 4
 ALIGN 4, db 0x90
 main:
     mov byte [bp - 2], dl            ; boot_drive
@@ -101,7 +101,7 @@ main:
     push ax
     mov ax, fat32_bpb                                  ; defined in memory.inc, destination
     push ax
-    call kmemcpy                                       ; copy bpb to memory
+    call kmemcpy                                       ; copy bpb & ebpb to memory
     add sp, 0x6
 
     mov bx, fat32_bpb                                  ; bx now points to aligned memory structure
@@ -130,6 +130,8 @@ main:
     add sp, 0xC
 
 .check_sig:
+    ; BUG: this is hard coded to check @ ((0x7E0 << 4) + 0x7FFC)...i.e (STAGE2_ENTRY + (STAGE2_MAX_BYTES - 4))
+    ; this should be removed or done properly
     mov ax, 0x7E0
     mov fs, ax
     cmp dword [fs:0x7FFC], 0xDEADBEEF
@@ -140,7 +142,7 @@ main:
 .sig_ok:
     mov si, word [bp - 4]
     mov dl, byte [bp - 2]
-    jmp 0:0x7E00
+    jmp word 0x0000:0x7E00
 
 ; ###############
 ; Required BIOS function(s)
