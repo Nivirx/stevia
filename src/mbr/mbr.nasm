@@ -36,7 +36,7 @@ nop
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "mem.inc"
+%include "early_mem.inc"
 %include "error_codes.inc"
 %include "partition_table.inc"
 
@@ -136,7 +136,7 @@ main:
         push ax
         mov ax, DiskSig                         ; start of partition table
         push ax
-        mov ax, partition_table                 ; defined in memory.inc
+        mov ax, partition_table                 ; defined in early_mem.inc
         push ax
         call kmemcpy                            ; copy partition table to memory
         add sp, 0x6

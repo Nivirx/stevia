@@ -47,7 +47,7 @@ times 54 db 0x00
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "mem.inc"
+%include "early_mem.inc"
 %include "error_codes.inc"
 %include "fat32/bpb_offset_bx.inc"
 
