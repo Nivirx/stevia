@@ -51,15 +51,5 @@
     %endmacro
 %endif
 
-%ifnmacro PRINT_FUNC_LABEL
-    %macro PRINT_FUNC_LABEL 1
-        %define label %1
-        %assign addr label
-        %ifnctx __OUTPUT__
-            __OUTPUT__ "Entry point for '%1' = %d", addr
-        %endif
-    %endmacro
-%endif
-
 %define __INC_BOCHS_DEBUG_MAGIC
 %endif
