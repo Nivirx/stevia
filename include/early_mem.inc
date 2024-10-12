@@ -18,7 +18,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-%ifndef __INC_MEM
+%ifndef __INC_EARLY_MEM
 
 
 ; ## Generic Low mem map (from osdev wiki) ##
@@ -60,12 +60,10 @@
 
 ; next free space is 0x32D0
 %define fat32_nc_data         0x35D0
-%define fat32_nc_data_size    16
+%define fat32_nc_data_SIZE    16
 
 ; lba_packet for raw_disk_read
 %define lba_packet            0x4000
-
-
 
 ;PhysicalAddress = Segment * 16 + Offset
 %define SEG_TO_LINEAR(s,o) ((s << 4) + o)
@@ -76,21 +74,5 @@
 ; Seg = (physical - offset) / 16
 %define LINEAR_TO_SEGMENT(p,o) ((p - o) >> 4)
 
-; create normalized linear addres from seg:off (16:4)
-; Segement = linear >> 4 (top 16 bits)
-; offset = linear & 0x0F (low 4 bits)
-
-struc EarlyBootStruct_t
-    .lba_packet_offset resw 1
-endstruc
-
-; 20 bytes, passed to loaded kernel
-struc SteviaInfoStruct_t
-    .MemoryMapPtr      resd 1
-    .MemoryMapEntries  resd 1
-    .BPBDataPtr        resd 1
-    .EBPBDataPtr       resd 1
-endstruc
-
 %endif
-%define __INC_MEM
+%define __INC_EARLY_MEM
