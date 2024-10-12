@@ -43,13 +43,6 @@
 ; 0x0000000100000000  	    ???	            ??? (whatever exists) 	    RAM -- free for use (PAE/64bit)/More Extended memory
 ; ???????????????? 	        ??? 	        ??? 	                    Potentially usable for memory mapped PCI devices in modern hardware (but typically not, due to backward compatibility) 
 
-; 0x2700 -> 0x28FF
-%define disk_buffer           0x2700
-; 0x2900 -> 0x2AFF
-%define fat_buffer            0x2900
-; 0x2B00 -> 0x2CFF
-%define dir_buffer            0x2B00
-
 ; copy of partition table, 72 bytes
 %define partition_table       0x3000
 %define partition_table_SIZE  72
@@ -64,15 +57,6 @@
 %define fat32_ebpb            0x306E
 %define fat32_ebpb_SIZE       54
 
-; FAT32 FSInfo, 512 bytes
-;0x30A2
-%define fat32_fsinfo          0x30B0
-%define fat32_fsinfo_SIZE     512
-
-; some stored state for the fat32 driver
-;0x32A2
-%define fat32_state           0x34B0
-%define fat32_state_SIZE      32
 
 ; next free space is 0x32D0
 %define fat32_nc_data         0x35D0
@@ -81,14 +65,6 @@
 ; lba_packet for raw_disk_read
 %define lba_packet            0x4000
 
-%define BIOSMemoryMap         0x4200
-%define SteviaInfo            0x5200
-
-
-; High memory addresses for loading kernel (for use with unreal mode and 32bit override)
-
-; file load buffer at 16MB
-%define HMEM_load_buffer      0x1000000
 
 
 ;PhysicalAddress = Segment * 16 + Offset
@@ -103,6 +79,10 @@
 ; create normalized linear addres from seg:off (16:4)
 ; Segement = linear >> 4 (top 16 bits)
 ; offset = linear & 0x0F (low 4 bits)
+
+struc EarlyBootStruct_t
+    .lba_packet_offset resw 1
+endstruc
 
 ; 20 bytes, passed to loaded kernel
 struc SteviaInfoStruct_t
