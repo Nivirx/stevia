@@ -284,33 +284,33 @@ EnterUnrealMode:
     push gs
     push ss
 
-    push cs                     ; save real mode code selector
-    lgdt [unreal_gdt_info]
+    push cs                               ; save real mode code selector
+    pop ax                                ; save cs to ax to setup far jump
+    mov word [ds:__UNREAL_SEGMENT], ax    
 
-    mov eax, cr0               ; switch to pmode
-    or al,1                     ; set pmode bit
-    mov cr0, eax
-    jmp $+2
+    lgdt [unreal_gdt_info]
+    mov eax, cr0                          
+    or al,1                               ; set pmode bit
+    mov cr0, eax                          ; switch to pmode
+    jmp $+2                               ; clear instruction cache
 
     ;jmp far 0x0008:EnterUnrealMode.load_cs
     db 0xEA                               ; jmp far imm16:imm16
     dw EnterUnrealMode.load_cs            ; error_far_ptr
     dw 0x0008                             ; error_far_seg
 .load_cs:
-    mov bx, 0x10               ; select descriptor 2
-    mov ds, bx                 ; 10h = 0001_0000b
+    mov bx, 0x10                          ; select descriptor 2
+    mov ds, bx                            ; 10h = 0001_0000b
                   
     mov ss, bx
     mov es, bx
     mov fs, bx
-    mov gs, bx                  ; other data/stack to desc. 2
+    mov gs, bx                            ; other data/stack to index 2 (off 0x10)
     
-    and al,0xFE                 ; back to realmode
-    mov cr0, eax                ; by toggling bit again
-    jmp $+2
+    and al,0xFE                 ; toggle bit 1 of cr0
+    mov cr0, eax                ; back to realmode
+    jmp $+2                     ; clear instruction cache again
 
-    pop ax                      ; save cs to ax to setup far jump
-    mov word [ds:__UNREAL_SEGMENT], ax
     ;jmp far 0x0008:EnterUnrealMode.unload_cs
     db 0xEA                               ; jmp far imm16:imm16
     dw EnterUnrealMode.unload_cs          ; error_far_ptr
