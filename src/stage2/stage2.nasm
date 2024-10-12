@@ -19,7 +19,7 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0X7E00]
+[ORG 0x0000]
 [CPU KATMAI]
 [map all stage2.map]
 [WARNING -reloc-abs-byte]
@@ -27,19 +27,15 @@
 [WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_STAGE2
 
-
-
 ; ###############
-;
 ; Headers/Includes/Definitions
-;
 ; ###############
 
 %include "util/bochs_magic.inc"
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "mem.inc"
+%include "early_mem.inc"
 %include "error_codes.inc"
 
 %macro print_string 1
@@ -50,38 +46,71 @@
 %endmacro
 
 section .text
-org 0x7E00
+org 0x0000
+
 begin_text:
 jmp short (init - $$)
 nop
 
 ALIGN 4, db 0x90
 init:
-    cli                         ; We do not want to be interrupted
+    cli                               ; We do not want to be interrupted
 
-    xor ax, ax                  ; 0 AX
-    mov ds, ax                  ; Set segment registers to 0
-    mov es, ax                  ; *
-    mov fs, ax                  ; *
-    mov gs, ax                  ; *
+    mov ax, 0x07E0                    ; 0x07E0 i.e 0x7E00 >> 4 in AX
+    mov ds, ax                        ; Set segment registers to 0
+    mov es, ax                        ; *
+    mov fs, ax                        ; *
+    mov gs, ax                        ; *
 
-    mov ss, ax                        ; Set Stack Segment to 0
-    mov sp, EARLY_STACK_START         ; Set Stack Pointer
+    mov ss, ax                        ; Set Stack Segment to 0x07E0
+    mov sp, stack_top                 ; Set Stack Pointer
     mov bp, sp
     sub sp, 0x20                      ; 32 bytes for local varibles
 
     sti
 
-    jmp 0:main
+    jmp word 0x07E0:main
 
 ; ###############
-;
-; Extra/Shared Functions
-;
+; Functions
 ; ###############
 
 %include "util/kmem_func.nasm"
+%include "util/kmemcpy5_func.nasm"
+%include "util/kmemset4_func.nasm"
 %include "util/error_func.nasm"
+
+; ###############
+; FAT32 Driver
+; ###############
+
+boot_drive_ptr:
+    dw 0x0000
+partition_offset_ptr:
+    dw 0x0000
+
+%include 'fat32/FAT32_SYS.inc'
+
+; ###############
+; BIOS functions
+; ###############
+
+%include 'BIOS/BIOS_SYS.inc'
+
+; structures
+
+struc SteviaInfoStruct_t
+    .MemoryMapPtr      resd 1
+    .MemoryMapEntries  resd 1
+endstruc
+
+struc EarlyBootStruct_t
+    .lba_packet      resb LBAPkt_t_size
+    .partition_table resb partition_table_SIZE
+    .fat32_bpb       resb fat32_bpb_SIZE
+    .fat32_ebpb      resb fat32_ebpb_SIZE
+    .fat32_nc_data   resb fat32_nc_data_SIZE
+endstruc
 
 ; bp - 2 : uint8_t boot_drive
 ; bp - 4 : uint16_t part_offset
@@ -135,27 +164,6 @@ main:
 hcf:
     hlt
     jmp short (hcf - $$)
-
-; ###############
-;
-; FAT32 Driver
-;
-; ###############
-
-boot_drive_ptr:
-    dw 0x0000
-partition_offset_ptr:
-    dw 0x0000
-
-%include 'fat32/FAT32_SYS.inc'
-
-; ###############
-;
-; BIOS functions
-;
-; ###############
-
-%include 'BIOS/BIOS_SYS.inc'
 
 ; ##############################
 ;
@@ -465,7 +473,7 @@ end_data:
 
 ; section start location needs to be a 'critical expression'
 ; i.e resolvable at build time, we are setting 0x7E00 as the offset since
-section .sign start=((MAX_STAGE2_BYTES - 512) + 0x7E00)
+section .sign start=(MAX_STAGE2_BYTES - 512)
 times ( (512 - 4) - ($ -$$)) db 0x90    ; nop
 STAGE2_SIG: dd 0xDEADBEEF               ; Signature to mark the end of the stage2
 
@@ -481,15 +489,15 @@ dir_buffer resb 512
 
 fat_fsinfo resb 512
 
-fat32_state resb FAT32_State_t_size
-
 %define BIOSMemoryMap_SIZE 4096
 BIOSMemoryMap resb 4096
 
 SteviaInfo resd 4
+fat32_state resb FAT32_State_t_size
 
 align 16
 stack_bottom:
-    stack resb 4096
+    stack resb 8192
 stack_top:
+stage2_main_redzone resb 32
 end_bss:
