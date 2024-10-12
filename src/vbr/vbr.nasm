@@ -21,7 +21,8 @@
 [ORG 0x7C00]
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
-[WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
+[WARNING -reloc-abs-word]
+[map all vbr.map]                   ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_VBR
 
 __ENTRY:

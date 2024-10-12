@@ -23,7 +23,7 @@
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
-
+[map all mbr.map]
 %define __STEVIA_MBR
 
 jmp short (init - $$)
