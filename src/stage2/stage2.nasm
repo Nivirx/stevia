@@ -472,8 +472,24 @@ STAGE2_SIG: dd 0xDEADBEEF               ; Signature to mark the end of the stage
 section .bss follows=.sign
 align 512
 begin_bss:
-buffer1 resb 512
-buffer2 resb 512
-buffer3 resb 512
-buffer4 resb 512
+
+disk_buffer resb 512
+
+fat_buffer resb 512
+
+dir_buffer resb 512
+
+fat_fsinfo resb 512
+
+fat32_state resb FAT32_State_t_size
+
+%define BIOSMemoryMap_SIZE 4096
+BIOSMemoryMap resb 4096
+
+SteviaInfo resd 4
+
+align 16
+stack_bottom:
+    stack resb 4096
+stack_top:
 end_bss:
