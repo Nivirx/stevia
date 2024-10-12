@@ -21,15 +21,13 @@
 [BITS 16]
 [ORG 0X7E00]
 [CPU KATMAI]
+[map all stage2.map]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
 [WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.
-
 %define __STEVIA_STAGE2
 
-__STAGE2_ENTRY:
-jmp short (init - $$)
-nop
+
 
 ; ###############
 ;
@@ -51,9 +49,11 @@ nop
     add sp, 0x2
 %endmacro
 
-; ###############
-; End Section
-; ###############
+section .text
+org 0x7E00
+begin_text:
+jmp short (init - $$)
+nop
 
 ALIGN 4, db 0x90
 init:
@@ -83,11 +83,6 @@ init:
 %include "util/kmem_func.nasm"
 %include "util/error_func.nasm"
 
-; ###############
-; End Section
-; ###############
-
-;
 ; bp - 2 : uint8_t boot_drive
 ; bp - 4 : uint16_t part_offset
 ALIGN 4, db 0x90
@@ -326,7 +321,11 @@ EnterUnrealMode.unload_cs:
 .endp:
     __CDECL16_EXIT
     ret
+end_text:
 
+section .data follows=.text
+align 512
+begin_data:
 ; #############
 ;
 ; Strings
@@ -459,11 +458,22 @@ version_magic:
 ALIGN 8
 datetime_magic:
     db 'Assembled - ', __DATE__, ' ', __TIME__, 00h
-
+end_data:
 
 %assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - ($ - $$))
-%warning STAGE2 has bytes_remaining bytes remaining for code (MAX: MAX_STAGE2_BYTES)
+%warning STAGE2 has bytes_remaining bytes remaining for code/data (MAX: MAX_STAGE2_BYTES)
 
-; this is here to make the stage2 bigger than 1 sector for testing
-times ((MAX_STAGE2_BYTES - 4) - ($ - $$)) db 0x00
-STAGE2_SIG: dd 0xDEADBEEF
+; section start location needs to be a 'critical expression'
+; i.e resolvable at build time, we are setting 0x7E00 as the offset since
+section .sign start=((MAX_STAGE2_BYTES - 512) + 0x7E00)
+times ( (512 - 4) - ($ -$$)) db 0x90    ; nop
+STAGE2_SIG: dd 0xDEADBEEF               ; Signature to mark the end of the stage2
+
+section .bss follows=.sign
+align 512
+begin_bss:
+buffer1 resb 512
+buffer2 resb 512
+buffer3 resb 512
+buffer4 resb 512
+end_bss:
