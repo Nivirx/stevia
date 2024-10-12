@@ -28,7 +28,7 @@ kmemcpy5:
     __CDECL16_ENTRY
     push ds
     push es
-.setup_segments
+.setup_segments:
     mov ax, [bp + 4]
     mov ds, ax              ; destination segment
 
@@ -48,6 +48,6 @@ kmemcpy5:
 .endf:
     __CDECL16_EXIT
     ret
-    
+
 %define __INC_KMEMCPY5_FUNC
 %endif
