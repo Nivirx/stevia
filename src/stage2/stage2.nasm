@@ -19,27 +19,24 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0X7E00]
+[ORG 0x0500]                            ; IF YOU CHANGE ORG CHANGE THE SIGN OFFSET AT THE END
 [CPU KATMAI]
 [map all stage2.map]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
 [WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_STAGE2
-
-
+%define __STAGE2_SEGMENT 0x0000
 
 ; ###############
-;
 ; Headers/Includes/Definitions
-;
 ; ###############
 
 %include "util/bochs_magic.inc"
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "mem.inc"
+%include "early_mem.inc"
 %include "error_codes.inc"
 
 %macro print_string 1
@@ -50,57 +47,130 @@
 %endmacro
 
 section .text
-org 0x7E00
+org 0x0500
+
 begin_text:
 jmp short (init - $$)
 nop
 
+; dl = byte boot_drive
+; si = word part_offset (active partition offset)
+; bx = ptr PartTable_t partition_table
+; dx = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
-    cli                         ; We do not want to be interrupted
+    cli                               ; We do not want to be interrupted
 
-    xor ax, ax                  ; 0 AX
-    mov ds, ax                  ; Set segment registers to 0
-    mov es, ax                  ; *
-    mov fs, ax                  ; *
-    mov gs, ax                  ; *
+    ;
+    ; Zero BSS section
+    ;
+    mov cx, (end_bss - begin_bss)     ; count = bss length
 
-    mov ss, ax                        ; Set Stack Segment to 0
-    mov sp, EARLY_STACK_START         ; Set Stack Pointer
+    mov ax, begin_bss
+    shr ax, 4
+    mov es, ax                        ; es = begining of bss section
+
+    xor ax, ax
+    mov di, ax                        ; dst = 0
+
+    cld
+    rep stosb                         ; zero bss section
+    ; done zeroing BSS
+
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment
+    mov ds, ax                        ; *
+    mov es, ax                        ; *
+    mov fs, ax                        ; *
+    mov gs, ax                        ; *
+
+    mov ss, ax                        ; Set Stack Segment to data segment
+    mov sp, stack_top                 ; Set Stack Pointer
+
     mov bp, sp
     sub sp, 0x20                      ; 32 bytes for local varibles
 
     sti
 
-    jmp 0:main
+    jmp word __STAGE2_SEGMENT:main
 
 ; ###############
-;
-; Extra/Shared Functions
-;
+; Functions
 ; ###############
 
 %include "util/kmem_func.nasm"
+%include "util/kmemcpy5_func.nasm"
+%include "util/kmemset4_func.nasm"
 %include "util/error_func.nasm"
 
-; bp - 2 : uint8_t boot_drive
-; bp - 4 : uint16_t part_offset
+; ###############
+; FAT32 Driver
+; ###############
+
+boot_drive_ptr:
+    dw 0x0000
+partition_offset_ptr:
+    dw 0x0000
+
+%include 'fat32/FAT32_SYS.inc'
+
+; ###############
+; BIOS functions
+; ###############
+
+%include 'BIOS/BIOS_SYS.inc'
+
+; structures
+
+struc SteviaInfoStruct_t
+    .MemoryMapPtr      resd 1
+    .MemoryMapEntries  resd 1
+endstruc
+
+struc EarlyBootStruct_t
+    .partition_table resb PartTable_t_size
+    .fat32_bpb       resb FAT32_bpb_t_size
+    .fat32_ebpb      resb FAT32_ebpb_t_size
+endstruc
+
+; bp - 2 : byte boot_drive
+; bp - 4 : word part_offset
+; bp - 6 : ptr PartTable_t partition_table
+; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
     lea ax, [bp - 2]
     mov [boot_drive_ptr], ax
+
     lea ax, [bp - 4]
     mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
 
     mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
     mov word [bp - 4], si               ; partition_offset
-
+    mov word [bp - 6], bx               ; partition_table
+    mov word [bp - 8], dx               ; fat32_bpb
+.check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
-    je main.signature_present
+    je main.stage2_main
     ERROR STAGE2_SIGNATURE_MISSING
+.stage2_main:
+    mov ax, PartTable_t_size
+    push ax
+    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, partition_table                                  
+    push ax
+    call kmemcpy                                       ; copy partition table data
+    add sp, 0x6
+                                          
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
+    push ax
+    mov ax, [bp - 8]                                    ; start of bpb - 0x3 for the jump short main at the start
+    push ax
+    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    push ax
+    call kmemcpy                                       ; copy bpb & ebpb to memory
+    add sp, 0x6
 
-.signature_present:
     call SetTextMode
     call disable_cursor
     print_string HelloPrompt_cstr
@@ -121,6 +191,7 @@ main:
     call InitFATDriver
     print_string InitFATSYS_OK_cstr
 
+    ERROR STEVIA_DEBUG_HALT
     ;
     ; Find first cluster of bootable file
     ;
@@ -135,27 +206,6 @@ main:
 hcf:
     hlt
     jmp short (hcf - $$)
-
-; ###############
-;
-; FAT32 Driver
-;
-; ###############
-
-boot_drive_ptr:
-    dw 0x0000
-partition_offset_ptr:
-    dw 0x0000
-
-%include 'fat32/FAT32_SYS.inc'
-
-; ###############
-;
-; BIOS functions
-;
-; ###############
-
-%include 'BIOS/BIOS_SYS.inc'
 
 ; ##############################
 ;
@@ -280,14 +330,16 @@ EnterUnrealMode:
     push ss
 
     push cs                               ; save real mode code selector
+    xor ax, ax                            ;
     pop ax                                ; save cs to ax to setup far jump
-    mov word [ds:__UNREAL_SEGMENT], ax    
+    mov word [__UNREAL_SEGMENT], ax    
 
-    lgdt [unreal_gdt_info]
+    lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
+
     mov eax, cr0                          
     or al,1                               ; set pmode bit
     mov cr0, eax                          ; switch to pmode
-    jmp $+2                               ; clear instruction cache
+    jmp short $+2
 
     ;jmp far 0x0008:EnterUnrealMode.load_cs
     db 0xEA                               ; jmp far imm16:imm16
@@ -302,10 +354,10 @@ EnterUnrealMode:
     mov fs, bx
     mov gs, bx                            ; other data/stack to index 2 (off 0x10)
     
-    and al,0xFE                 ; toggle bit 1 of cr0
-    mov cr0, eax                ; back to realmode
-    jmp $+2                     ; clear instruction cache again
-
+    and al,0xFE                           ; toggle bit 1 of cr0
+    mov cr0, eax                          ; back to realmode
+    jmp short $+2
+    
     ;jmp far 0x0008:EnterUnrealMode.unload_cs
     db 0xEA                               ; jmp far imm16:imm16
     dw EnterUnrealMode.unload_cs          ; error_far_ptr
@@ -367,58 +419,33 @@ IntToHex_table:
     db '0123456789ABCDEF'
 
 ; see docs/gdt.txt for a quick refresher on GDT 
-ALIGN 4, db 0
+ALIGN 16, db 0
 unreal_gdt_info:
     unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
-    unreal_gdt_ptr:  dd unreal_gdt_start
-
+    unreal_gdt_ptr:  dd ((__STAGE2_SEGMENT << 4) + unreal_gdt_start)
 unreal_gdt_start:
-    ; entry 0
+    ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
 
-    ; entry 1 (4 GiB flat code map)
-    dw 0xFFFF            ; Segment Limit 15:0 (Same large limit as data segment)
-    dw 0x0000            ; Base Address 15:0
+    ; entry 1 (16bit code 64KiB limit)
+    dd 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
     db 0x00              ; Base Address 23:16
-    db 1001_1010b        ; Access Byte: 1001_1010b for executable code
-    db 1000_1111b        ; Flags and Segment Limit 19:16 (Same as data segment)
+    db 1001_1010b        ; Access Byte: Present, ring0, S = 1, executable (1), non-conforming, readable, Accessed
+    db 0000_0000b        ; Flags: GR = 4KiB, attr = <DB/L/Avl>, Granularity = 4KiB & 16:19 of limit
     db 0x00              ; Base Address 31:24
 
-    ; entry 2 (4 GiB flat data map)
-    dw 0xFFFF               ; 0:15 limit
-    dw 0x0000               ; 0:15 base
-    db 0x00                 ; 16:23 base
-    db 1001_0010b            ; bit 0:4 = S/Type, [1, DC, RW, Ac] <code> or [0, E, RW, Ac] <data>
-                            ; bit 5:6 = Privl
-                            ; bit 7   = Present
-
-    db 1000_1111b            ; bit 0:3 = 16:19 of Limit
-                            ; bit 4 = Availible to software bit
-                            ; bit 5 = Reserved (?)
-                            ; bit 6 = D/B bit, depending on if this is code/data 1 = 32 bit operands or stack size
-                            ; bit 7 = Granularity bit. 1 = multiply limit by 4096
-    db 0x00                 ; base 24:31
-    ; at the end of the day...
-    ; base = 0x00000000
-    ; limit = 0xFFFFF
-    ; Accessed = 0, ignore this field
-    ; RW = 1, data is Read/Write
-    ; E = 0, Expand up, valid data is from base -> limit, if 1 valid data is from (limit + 1) -> base
-    ; C/D = 0, Segment is a data segment
-    ; S = 1, Segment is a system segment
-    ; Privl = 00b, Ring0 segment
-    ; Pr = 1, segment is present
-    ; AVL = 0, ignore this field
-    ; D/B bit = 0, 16bit code/stack
-    ; Gr = 1, multiply limit by 4096 
+    ; entry 2 (16bit data segment with 4 GiB flat mapping)
+    dd 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
+    db 0x00              ; Base Address(23:16)
+    db 1001_0010b        ; Access Byte: Present, ring0, S = 1, data (0), non-confirming, writable, present
+    db 1000_1111b        ; Flags: GR = 4KiB, attr = <16-bit/?/?>, Granularity = 4KiB & 16:19 of limit
+    db 0x00              ; Base Address(31:24)
 unreal_gdt_end:
 
-ALIGN 4, db 0
+ALIGN 16, db 0
 gdt32_info:
     gdt32_size: dw (gdt32_end - gdt32_start) - 1
-    gdt32_ptr:  dd gdt32_start
-
-; check above for detailed information
+    gdt32_ptr:  dd ((__STAGE2_SEGMENT << 4) + gdt32_start)
 gdt32_start:
     dq 0
     .gdt32_code:
@@ -465,15 +492,58 @@ end_data:
 
 ; section start location needs to be a 'critical expression'
 ; i.e resolvable at build time, we are setting 0x7E00 as the offset since
-section .sign start=((MAX_STAGE2_BYTES - 512) + 0x7E00)
-times ( (512 - 4) - ($ -$$)) db 0x90    ; nop
-STAGE2_SIG: dd 0xDEADBEEF               ; Signature to mark the end of the stage2
+section .sign start=((MAX_STAGE2_BYTES - 512) + 0x0500)
+times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
+STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
 
 section .bss follows=.sign
-align 512
+align 512, resb 1
 begin_bss:
-buffer1 resb 512
-buffer2 resb 512
-buffer3 resb 512
-buffer4 resb 512
+stack_bottom:
+    resb 4096
+stack_top:
+stage2_main_redzone:
+    resb 32
+
+align 16, resb 1
+partition_table resb PartTable_t_size
+
+align 16, resb 1
+fat32_bpb resb FAT32_bpb_t_size
+fat32_ebpb resb FAT32_ebpb_t_size
+
+align 16, resb 1
+fat32_nc_data resb 16
+
+align 16, resb 1
+lba_packet resb LBAPkt_t_size
+
+align 16, resb 1
+SteviaInfo:
+    resd 4
+align 16, resb 1
+fat32_state:
+    resb FAT32_State_t_size
+
+align 16, resb 1
+mbr_sector_data:
+    resb 512
+vbr_sector_data:
+    resb 512
+
+align 16, resb 1
+disk_buffer:
+    resb 512
+fat_buffer:
+    resb 512
+dir_buffer:
+    resb 512
+fat_fsinfo:
+    resb 512
+
+align 16, resb 1
+%define BIOSMemoryMap_SIZE 2048
+BIOSMemoryMap:
+    resb 2048
+
 end_bss:

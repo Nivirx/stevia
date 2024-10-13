@@ -18,13 +18,36 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-%ifndef __INC_ENTRY
+%ifndef __INC_KMEMCPY5_FUNC
+%include 'cdecl16.inc'
 
-; 8KiB from 0x2500 -> 0x500
-%define EARLY_STACK_START            0xFFFF
-%define MBR_ENTRY                    0x0600
-%define VBR_ENTRY                    0x7C00
-%define STAGE2_ENTRY                 0x0500
+; uint8_t* kmemset(word dest_segment, word dest, word src_segment, word src, byte len);
+; not overlap safe, only for
+ALIGN 4, db 0x90
+kmemcpy5:
+    __CDECL16_ENTRY
+    push ds
+    push es
+.setup_segments:
+    mov ax, [bp + 4]
+    mov ds, ax              ; destination segment
 
+    mov ax, [ bp + 8]
+    mov es, ax              ; source segment
+.func:
+    mov cx, [bp + 12]        ; len
+    mov si, [bp + 10]        ; src
+    mov di, [bp + 6]        ; dest
+    
+    cld                     ; ensure we are incrementing
+    rep movsb               ; move ds:si -> es:di
+    mov ax, di              ; return pointer to dest
+.restore_segments:
+    pop es
+    pop ds
+.endf:
+    __CDECL16_EXIT
+    ret
+
+%define __INC_KMEMCPY5_FUNC
 %endif
-%define __INC_ENTRY

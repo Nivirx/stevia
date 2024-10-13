@@ -22,9 +22,7 @@
 
 %macro ERROR 1
     mov al, %1           ; al = 1 byte error code mapped to ascii values
-    db 0xEA              ; jmp far imm16:imm16
-    dw error             ; error_far_seg
-    dw 0x0000            ; error_far_ptr
+    jmp error
 %endmacro
 
 ; pass error as ascii character in al, errors a-zA-Z or 0-9

@@ -48,7 +48,8 @@ GetMemoryMap:
     mov eax, 0xE820                         ; select 0xE820 function
     xor ebx, ebx                            ; Continuation value, 0 for the first call
 
-    mov dx, (BIOSMemoryMap >> 4)
+    lea dx, [BIOSMemoryMap]
+    shr dx, 4
     mov es, dx
     xor di, di                              ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
 
