@@ -51,20 +51,13 @@ init:
 
     ;
     ; Zero BSS section
-    ;
-    mov cx, (end_bss - begin_bss)     ; count = bss length
-
+    mov cx, (end_bss - begin_bss)     ; count = bss length                    
     mov ax, begin_bss
-    shr ax, 4
-    mov es, ax                        ; es = begining of bss section
-
+    mov di, ax                        ; es:di is dest
     xor ax, ax
-    mov di, ax                        ; dst = 0
-
     cld
     rep stosb                         ; zero bss section
 
-    xor ax, ax
     mov ss, ax                      ; Set Stack Segment to 0
     mov sp, stack_top               ; Setup stack
     mov bp, sp                      ; base ptr = stack ptr
