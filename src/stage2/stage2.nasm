@@ -396,27 +396,23 @@ ALIGN 16, db 0
 unreal_gdt_info:
     unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
     unreal_gdt_ptr:  dd ((__STAGE2_SEGMENT << 4) + unreal_gdt_start)
-
 unreal_gdt_start:
     ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
 
     ; entry 1 (16-bit code segment with 4 GiB flat mapping)
-    dw 0xFFFF            ; Segment Limit 15:0
-    dw 0x0000            ; Base Address 15:0
-    db 0000_0000b        ; Base Address 23:16
-    
-    db 1001_1010b        ; Access Byte: executable, readable, present
-    db 1000_1111b        ; 24:20 G/DB/L/AVL & SegLimit 19:16
+    dq 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
+    db 0x00              ; Base Address 23:16
+    db 1001_1010b        ; Access Byte: Present, ring0, S = 1, executable (1), non-conforming, readable, Accessed
+    db 1000_1111b        ; Flags: GR = 4KiB, attr = <DB/L/Avl>, Granularity = 4KiB & 16:19 of limit
     db 0000_0000b        ; Base Address 31:24
 
     ; entry 2 (16-bit data segment with 4 GiB flat mapping)
-    dw 0xFFFF            ; Segment Limit 15:0
-    dw 0x0000            ; Base Address 15:0
-    db 0000_0000b        ; Base Address 23:16
-    db 1001_0010b        ; Access Byte: readable, writable, present
-    db 1000_1111b        ; Flags: 16-bit, Granularity = 4KiB
-    db 0000_0000b        ; Base Address 31:24
+    dq 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
+    db 0x00              ; Base Address(23:16)
+    db 1001_0010b        ; Access Byte: Present, ring0, S = 1, data (0), non-confirming, writable, present
+    db 1000_1111b        ; Flags: GR = 4KiB, attr = <16-bit/?/?>, Granularity = 4KiB & 16:19 of limit
+    db 0000_0000b        ; Base Address(31:24)
 unreal_gdt_end:
 
 ALIGN 16, db 0
