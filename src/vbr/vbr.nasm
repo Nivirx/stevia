@@ -29,7 +29,6 @@ __ENTRY:
     jmp short (init - $$)
     nop
 
-phy_bpb_start:
 ; fill BPB area with 0x00 since we skip writing this part to disk
 ; but we need it for the 'jmp short entry; nop' above
 times 33 db 0x00
@@ -49,30 +48,41 @@ times 54 db 0x00
 %include "config.inc"
 %include "early_mem.inc"
 %include "error_codes.inc"
+%include "partition_table.inc"
+%include "fat32/fat32_structures.inc"
 %include "fat32/bpb_offset_bx.inc"
-
-
+;
+; dl = boot_drive
+; si = part_offset
+; bx = partition_table location from mbr
 ALIGN 4
 init:
-    cli                         ; We do not want to be interrupted
+    cli                             ; We do not want to be interrupted
+    xor ax, ax                      
+    mov ds, ax                      ; Set segment registers to 0x0000
+    mov es, ax
 
-    xor ax, ax                  ; 0 AX
-    mov ds, ax                  ; Set segment registers to 0
+    ; zero bss section
+    mov cx, (end_bss - begin_bss)     ; count = bss length                    
+    mov ax, begin_bss
+    mov di, ax                        ; es:di is dest
+    xor ax, ax
+    cld
+    rep stosb                         
 
-    mov ss, ax                  ; Set Stack Segment to 0
-    mov sp, EARLY_STACK_START   ; Setup stack
-    mov bp, sp                  ; base ptr = stack ptr
-    sub sp, 0x20                ; local varible space
+    xor ax, ax
+    mov ss, ax                      ; Set Stack Segment to 0
+    mov sp, stack_top               ; Setup stack
+    mov bp, sp                      ; base ptr = stack ptr
+    sub sp, 0x10                    ; local varible space
 
-    mov bx, VBR_ENTRY           ; move Bx to the new start of the initial boot sector
-    sti                         ; all done with inital setup and relocation, reenable interupts
+    mov cx, bx                      ; mov partition_table locaiton to cx
+    sti                             ; all done with inital setup and relocation, reenable interupts
 
-    jmp 0:main                  ; fix up cs:ip just in case and jump to relocated code
+    jmp 0:main                      ; fix up cs:ip just in case and jump to relocated code
 
 ; ###############
-;
 ; Extra/Shared Functions
-;
 ; ###############
 
 %include "util/kmem_func.nasm"
@@ -85,27 +95,38 @@ init:
 ;
 ; byte boot_drive @ bp - 2
 ; word part_offset @ bp - 4
+; ptr partition_table
 ALIGN 4, db 0x90
 main:
-    mov byte [bp - 2], dl            ; boot_drive
-    mov [bp - 4], si                 ; part_offset
+    mov byte [bp - 2], dl                 ; boot_drive
+    mov word [bp - 4], si                 ; part_offset
+    mov word [bp - 6], cx                 ; partition_table
 
-.check_FAT_size:                     ; we only support a very specific setup of FAT32
-    cmp dword [bsSectorHuge], 0      ; SectorsHuge will not be set if FAT12/16
-    ja main.load_stage2
-    ERROR VBR_ERROR_WRONG_FAT_SIZE
-.load_stage2:                                          ; read sectors 1-63 to stage2 entry point
-    mov ax, (fat32_bpb_SIZE + fat32_ebpb_SIZE)         ; size in byte
+.load_fs_data:
+    mov ax, PartTable_t_size
     push ax
-    mov ax, (phy_bpb_start - 0x3)                      ; start of bpb - 0x3 for the jump short main at the start
+    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, partition_table                                  
     push ax
-    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    call kmemcpy                                       ; copy partition table data
+    add sp, 0x6
+                                          
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)     ; size in byte
+    push ax
+    mov ax, __ENTRY                                    
+    push ax
+    mov ax, fat32_bpb                                  ; 
     push ax
     call kmemcpy                                       ; copy bpb & ebpb to memory
     add sp, 0x6
 
     mov bx, fat32_bpb                                  ; bx now points to aligned memory structure
-
+.check_FAT_size:                     ; we only support a very specific setup of FAT32
+    cmp dword [bsSectorHuge], 0      ; SectorsHuge will not be set if FAT12/16
+    ja main.load_stage2
+    ERROR VBR_ERROR_WRONG_FAT_SIZE
+.load_stage2:
+    ; read sectors 1-(MAX_STAGE2_BYTES / 512) to stage2 entry point
     movzx ax, byte [bp - 2]
     push ax                                            ; drive_num
 
@@ -114,7 +135,6 @@ main:
 
     mov dword eax, 0x1
     push dword eax                                     ; lba
-
 
     mov ax, STAGE2_ENTRY
     push ax                                            ; offset
@@ -127,17 +147,11 @@ main:
     ;                         uint16_t count, uint16_t drive_num)
     call read_disk_raw
     add sp, 0xC
-
-.check_sig:
-    mov eax, dword [(MAX_STAGE2_BYTES - 4) + 0x500]
-    cmp eax, 0xDEADBEEF
-    je main.sig_ok
-
-    ERROR VBR_ERROR_NO_SIGNATURE          ; no signature present in stage2
-    
-.sig_ok:
-    mov si, word [bp - 4]
-    mov dl, byte [bp - 2]
+.enter_stage2:
+    mov dl, byte [bp - 2]               ; boot_drive
+    mov si, word [bp - 4]               ; part_offset
+    mov bx, partition_table
+    mov dx, fat32_bpb
     jmp word 0x0000:STAGE2_ENTRY
 
 ; ###############
@@ -153,3 +167,26 @@ times (510 - ($ - $$)) nop     ; Fill the rest of sector with nop
 
 BootSig:
     dw 0xAA55                    ; Add boot signature at the end of bootloader
+
+section .bss follows=.text
+begin_bss:
+
+align 16, resb 1
+partition_table resb PartTable_t_size
+
+align 16, resb 1
+fat32_bpb resb FAT32_bpb_t_size
+fat32_ebpb resb FAT32_ebpb_t_size
+
+align 16, resb 1
+fat32_nc_data resb 16
+
+align 16, resb 1
+lba_packet resb LBAPkt_t_size
+
+align 512, resb 1
+stack_bottom resb 1024                  ; 1Kib stack early on
+
+stack_top:
+vbr_redzone resb 32
+end_bss:
