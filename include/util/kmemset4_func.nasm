@@ -18,13 +18,30 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 ; SOFTWARE.
 
-%ifndef __INC_ENTRY
+%ifndef __INC_KMEMSET4_FUNC
+%include 'cdecl16.inc'
 
-; 8KiB from 0x2500 -> 0x500
-%define EARLY_STACK_START            0xFFFF
-%define MBR_ENTRY                    0x0600
-%define VBR_ENTRY                    0x7C00
-%define STAGE2_ENTRY                 0x0500
+; word kmemset_byte(word segment, word dst, byte val, word len);
+ALIGN 4, db 0x90
+kmemset4:
+    __CDECL16_ENTRY
+.setup_segment:
+    push es
+    mov ax, [bp + 4]
+    mov es, ax
+ .func:
+    mov     cx, [bp + 10]       ; size_t len
+    mov     al, [bp + 8]        ; uint8_t val
+    mov     di, [bp + 6]        ; word dst
+
+    cld
+    rep     stosb               ; move al -> es:di
+    mov     ax, di              ; return pointer to dest
+.restore_segments:
+    pop es
+.endf:
+    __CDECL16_EXIT
+    ret
 
 %endif
-%define __INC_ENTRY
+%define __INC_KMEMSET4_FUNC

@@ -28,7 +28,7 @@ ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_ENTRY
 .func:
-    mov ax, fat32_state_SIZE
+    mov ax, FAT32_State_t_size
     push ax                     ; length of fat32_state structure
     xor ax, ax
     push ax                     ; init fat32_state with zero

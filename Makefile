@@ -25,6 +25,7 @@ stage2: $(stage2_binary_files)
 boottest: $(boottest_binary_files)
 
 clean:
+	@rm -rvf *.map
 	@rm -rvf $(build_dir)/*
 	@rm -rvf $(iso)
 	@rm -rvf $(isoz)
