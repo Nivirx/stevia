@@ -19,13 +19,14 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0x0000]
+[ORG 0x7E00]
 [CPU KATMAI]
 [map all stage2.map]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
 [WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_STAGE2
+%define __STAGE2_SEGMENT 0x0000
 
 ; ###############
 ; Headers/Includes/Definitions
@@ -46,7 +47,7 @@
 %endmacro
 
 section .text
-org 0x0000
+org 0x7E00
 
 begin_text:
 jmp short (init - $$)
@@ -56,20 +57,21 @@ ALIGN 4, db 0x90
 init:
     cli                               ; We do not want to be interrupted
 
-    mov ax, 0x07E0                    ; 0x07E0 i.e 0x7E00 >> 4 in AX
+    mov ax, __STAGE2_SEGMENT          ; configured segment
     mov ds, ax                        ; Set segment registers to 0
     mov es, ax                        ; *
     mov fs, ax                        ; *
     mov gs, ax                        ; *
 
-    mov ss, ax                        ; Set Stack Segment to 0x07E0
+    mov ss, ax                        ; Set Stack Segment to data segment
     mov sp, stack_top                 ; Set Stack Pointer
+
     mov bp, sp
     sub sp, 0x20                      ; 32 bytes for local varibles
 
     sti
 
-    jmp word 0x07E0:main
+    jmp word __STAGE2_SEGMENT:main
 
 ; ###############
 ; Functions
@@ -126,10 +128,12 @@ main:
 
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
-    je main.signature_present
+    je main.bss_init
     ERROR STAGE2_SIGNATURE_MISSING
 
-.signature_present:
+.bss_init:
+    nop             ; placeholder
+.stage2_main:
     call SetTextMode
     call disable_cursor
     print_string HelloPrompt_cstr
@@ -288,14 +292,19 @@ EnterUnrealMode:
     push ss
 
     push cs                               ; save real mode code selector
+    xor ax, ax                            ;
     pop ax                                ; save cs to ax to setup far jump
-    mov word [ds:__UNREAL_SEGMENT], ax    
+    mov word [__UNREAL_SEGMENT], ax    
 
-    lgdt [unreal_gdt_info]
+    shl eax, 4
+    add eax, unreal_gdt_start            ; ax contains the physical address of gdt table
+    mov dword [unreal_gdt_ptr], eax      ; update gdt ptr in unreal_gdt_info
+
+    lgdt [dword ((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; calculate linear address for lgdt to consume
+
     mov eax, cr0                          
     or al,1                               ; set pmode bit
     mov cr0, eax                          ; switch to pmode
-    jmp $+2                               ; clear instruction cache
 
     ;jmp far 0x0008:EnterUnrealMode.load_cs
     db 0xEA                               ; jmp far imm16:imm16
@@ -310,9 +319,8 @@ EnterUnrealMode:
     mov fs, bx
     mov gs, bx                            ; other data/stack to index 2 (off 0x10)
     
-    and al,0xFE                 ; toggle bit 1 of cr0
-    mov cr0, eax                ; back to realmode
-    jmp $+2                     ; clear instruction cache again
+    and al,0xFE                           ; toggle bit 1 of cr0
+    mov cr0, eax                          ; back to realmode
 
     ;jmp far 0x0008:EnterUnrealMode.unload_cs
     db 0xEA                               ; jmp far imm16:imm16
@@ -375,58 +383,36 @@ IntToHex_table:
     db '0123456789ABCDEF'
 
 ; see docs/gdt.txt for a quick refresher on GDT 
-ALIGN 4, db 0
+ALIGN 16, db 0
 unreal_gdt_info:
     unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
-    unreal_gdt_ptr:  dd unreal_gdt_start
+    unreal_gdt_ptr:  dd ((__STAGE2_SEGMENT << 4) + unreal_gdt_start)
 
 unreal_gdt_start:
-    ; entry 0
+    ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
 
-    ; entry 1 (4 GiB flat code map)
-    dw 0xFFFF            ; Segment Limit 15:0 (Same large limit as data segment)
+    ; entry 1 (16-bit code segment with 4 GiB flat mapping)
+    dw 0xFFFF            ; Segment Limit 15:0
     dw 0x0000            ; Base Address 15:0
-    db 0x00              ; Base Address 23:16
-    db 1001_1010b        ; Access Byte: 1001_1010b for executable code
-    db 1000_1111b        ; Flags and Segment Limit 19:16 (Same as data segment)
-    db 0x00              ; Base Address 31:24
+    db 0000_0000b        ; Base Address 23:16
+    db 1001_1010b        ; Access Byte: executable, readable, present
+    db 0000_1111b        ; Flags: 16-bit, Granularity = 4KiB
+    db 0000_0000b        ; Base Address 31:24
 
-    ; entry 2 (4 GiB flat data map)
-    dw 0xFFFF               ; 0:15 limit
-    dw 0x0000               ; 0:15 base
-    db 0x00                 ; 16:23 base
-    db 1001_0010b            ; bit 0:4 = S/Type, [1, DC, RW, Ac] <code> or [0, E, RW, Ac] <data>
-                            ; bit 5:6 = Privl
-                            ; bit 7   = Present
-
-    db 1000_1111b            ; bit 0:3 = 16:19 of Limit
-                            ; bit 4 = Availible to software bit
-                            ; bit 5 = Reserved (?)
-                            ; bit 6 = D/B bit, depending on if this is code/data 1 = 32 bit operands or stack size
-                            ; bit 7 = Granularity bit. 1 = multiply limit by 4096
-    db 0x00                 ; base 24:31
-    ; at the end of the day...
-    ; base = 0x00000000
-    ; limit = 0xFFFFF
-    ; Accessed = 0, ignore this field
-    ; RW = 1, data is Read/Write
-    ; E = 0, Expand up, valid data is from base -> limit, if 1 valid data is from (limit + 1) -> base
-    ; C/D = 0, Segment is a data segment
-    ; S = 1, Segment is a system segment
-    ; Privl = 00b, Ring0 segment
-    ; Pr = 1, segment is present
-    ; AVL = 0, ignore this field
-    ; D/B bit = 0, 16bit code/stack
-    ; Gr = 1, multiply limit by 4096 
+    ; entry 2 (16-bit data segment with 4 GiB flat mapping)
+    dw 0xFFFF            ; Segment Limit 15:0
+    dw 0x0000            ; Base Address 15:0
+    db 0000_0000b        ; Base Address 23:16
+    db 1001_0010b        ; Access Byte: readable, writable, present
+    db 0000_1111b        ; Flags: 16-bit, Granularity = 4KiB
+    db 0000_0000b        ; Base Address 31:24
 unreal_gdt_end:
 
-ALIGN 4, db 0
+ALIGN 16, db 0
 gdt32_info:
     gdt32_size: dw (gdt32_end - gdt32_start) - 1
-    gdt32_ptr:  dd gdt32_start
-
-; check above for detailed information
+    gdt32_ptr:  dd ((__STAGE2_SEGMENT << 4) + gdt32_start)
 gdt32_start:
     dq 0
     .gdt32_code:
@@ -473,14 +459,22 @@ end_data:
 
 ; section start location needs to be a 'critical expression'
 ; i.e resolvable at build time, we are setting 0x7E00 as the offset since
-section .sign start=(MAX_STAGE2_BYTES - 512)
-times ( (512 - 4) - ($ -$$)) db 0x90    ; nop
-STAGE2_SIG: dd 0xDEADBEEF               ; Signature to mark the end of the stage2
+section .sign start=((MAX_STAGE2_BYTES - 512) + 0x7E00)
+times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
+STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
 
 section .bss follows=.sign
 align 512
 begin_bss:
+stack_bottom:
+    stack resb 4096
+stack_top:
+stage2_main_redzone resb 32
 
+SteviaInfo resd 4
+fat32_state resb FAT32_State_t_size
+
+align 512
 disk_buffer resb 512
 
 fat_buffer resb 512
@@ -492,12 +486,4 @@ fat_fsinfo resb 512
 %define BIOSMemoryMap_SIZE 4096
 BIOSMemoryMap resb 4096
 
-SteviaInfo resd 4
-fat32_state resb FAT32_State_t_size
-
-align 16
-stack_bottom:
-    stack resb 8192
-stack_top:
-stage2_main_redzone resb 32
 end_bss:
