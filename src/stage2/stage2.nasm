@@ -53,10 +53,17 @@ begin_text:
 jmp short (init - $$)
 nop
 
+; dl = byte boot_drive
+; si = word part_offset (active partition offset)
+; bx = ptr PartTable_t partition_table
+; dx = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
     cli                               ; We do not want to be interrupted
 
+    ;
+    ; Zero BSS section
+    ;
     mov cx, (end_bss - begin_bss)     ; count = bss length
 
     mov ax, begin_bss
@@ -68,9 +75,10 @@ init:
 
     cld
     rep stosb                         ; zero bss section
+    ; done zeroing BSS
 
-    mov ax, __STAGE2_SEGMENT          ; configured segment
-    mov ds, ax                        ; Set segment registers to 0
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment
+    mov ds, ax                        ; *
     mov es, ax                        ; *
     mov fs, ax                        ; *
     mov gs, ax                        ; *
@@ -119,30 +127,50 @@ struc SteviaInfoStruct_t
 endstruc
 
 struc EarlyBootStruct_t
-    .lba_packet      resb LBAPkt_t_size
-    .partition_table resb partition_table_SIZE
-    .fat32_bpb       resb fat32_bpb_SIZE
-    .fat32_ebpb      resb fat32_ebpb_SIZE
-    .fat32_nc_data   resb fat32_nc_data_SIZE
+    .partition_table resb PartTable_t_size
+    .fat32_bpb       resb FAT32_bpb_t_size
+    .fat32_ebpb      resb FAT32_ebpb_t_size
 endstruc
 
-; bp - 2 : uint8_t boot_drive
-; bp - 4 : uint16_t part_offset
+; bp - 2 : byte boot_drive
+; bp - 4 : word part_offset
+; bp - 6 : ptr PartTable_t partition_table
+; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
     lea ax, [bp - 2]
     mov [boot_drive_ptr], ax
+
     lea ax, [bp - 4]
     mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
 
     mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
     mov word [bp - 4], si               ; partition_offset
-
+    mov word [bp - 6], bx               ; partition_table
+    mov word [bp - 8], dx               ; fat32_bpb
+.check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
     je main.stage2_main
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
+    mov ax, PartTable_t_size
+    push ax
+    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, partition_table                                  
+    push ax
+    call kmemcpy                                       ; copy partition table data
+    add sp, 0x6
+                                          
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
+    push ax
+    mov ax, [bp - 8]                                    ; start of bpb - 0x3 for the jump short main at the start
+    push ax
+    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    push ax
+    call kmemcpy                                       ; copy bpb & ebpb to memory
+    add sp, 0x6
+
     call SetTextMode
     call disable_cursor
     print_string HelloPrompt_cstr
@@ -163,6 +191,7 @@ main:
     call InitFATDriver
     print_string InitFATSYS_OK_cstr
 
+    ERROR STEVIA_DEBUG_HALT
     ;
     ; Find first cluster of bootable file
     ;
@@ -468,25 +497,53 @@ times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
 STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
 
 section .bss follows=.sign
-align 512
+align 512, resb 1
 begin_bss:
 stack_bottom:
-    stack resb 4096
+    resb 4096
 stack_top:
-stage2_main_redzone resb 32
+stage2_main_redzone:
+    resb 32
 
-SteviaInfo resd 4
-fat32_state resb FAT32_State_t_size
+align 16, resb 1
+partition_table resb PartTable_t_size
 
-disk_buffer resb 512
+align 16, resb 1
+fat32_bpb resb FAT32_bpb_t_size
+fat32_ebpb resb FAT32_ebpb_t_size
 
-fat_buffer resb 512
+align 16, resb 1
+fat32_nc_data resb 16
 
-dir_buffer resb 512
+align 16, resb 1
+lba_packet resb LBAPkt_t_size
 
-fat_fsinfo resb 512
+align 16, resb 1
+SteviaInfo:
+    resd 4
+align 16, resb 1
+fat32_state:
+    resb FAT32_State_t_size
 
-%define BIOSMemoryMap_SIZE 4096
-BIOSMemoryMap resb 4096
+align 16, resb 1
+mbr_sector_data:
+    resb 512
+vbr_sector_data:
+    resb 512
+
+align 16, resb 1
+disk_buffer:
+    resb 512
+fat_buffer:
+    resb 512
+dir_buffer:
+    resb 512
+fat_fsinfo:
+    resb 512
+
+align 16, resb 1
+%define BIOSMemoryMap_SIZE 2048
+BIOSMemoryMap:
+    resb 2048
 
 end_bss:
