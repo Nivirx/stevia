@@ -36,22 +36,39 @@ nop
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "early_mem.inc"
 %include "error_codes.inc"
 %include "partition_table.inc"
+%include "fat32/fat32_structures.inc"
 
 ALIGN 4
 init:
     cli                             ; We do not want to be interrupted
-
-    xor ax, ax                      ; 0 AX
-    mov ds, ax                      ; Set segment registers to 0
+    xor ax, ax                      
+    mov ds, ax                      ; Set segment registers to 0x0000
     mov es, ax
-    
+    mov fs, ax
+    mov gs, ax
+
+    ;
+    ; Zero BSS section
+    ;
+    mov cx, (end_bss - begin_bss)     ; count = bss length
+
+    mov ax, begin_bss
+    shr ax, 4
+    mov es, ax                        ; es = begining of bss section
+
+    xor ax, ax
+    mov di, ax                        ; dst = 0
+
+    cld
+    rep stosb                         ; zero bss section
+
+    xor ax, ax
     mov ss, ax                      ; Set Stack Segment to 0
-    mov sp, EARLY_STACK_START       ; Setup stack
+    mov sp, stack_top               ; Setup stack
     mov bp, sp                      ; base ptr = stack ptr
-    sub sp, 0x10                    ; local varible space             
+    sub sp, 0x10                    ; local varible space
 
     xor cx, cx
     mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
@@ -133,13 +150,13 @@ main:
         je main.sig_ok
         ERROR MBR_ERROR_NO_VBR_SIG                        ; no signature present
     .sig_ok:
-        mov ax, partition_table_SIZE            ; 72 bytes of data
+        mov ax, PartTable_t_size                
         push ax
         mov ax, DiskSig                         ; start of partition table
         push ax
-        mov ax, partition_table                 ; defined in early_mem.inc
+        mov ax, partition_table                 
         push ax
-        call kmemcpy                            ; copy partition table to memory
+        call kmemcpy                            ; copy partition table to bss
         add sp, 0x6
 
         mov si, word [bp - 4]
@@ -175,3 +192,26 @@ PartEntry4:
     times 16 db 0x00
 BootSig:
     dw 0xAA55                    ; Add boot signature at the end of bootloader
+; this should mark the 512 byte mark...if not, something has gone wrong.
+section .bss follows=.text
+begin_bss:
+
+align 16, resb 1
+partition_table resb PartTable_t_size
+
+align 16, resb 1
+fat32_bpb resb FAT32_bpb_t_size
+fat32_ebpb resb FAT32_ebpb_t_size
+
+align 16, resb 1
+fat32_nc_data resb 16
+
+align 16, resb 1
+lba_packet resb LBAPkt_t_size
+
+align 512, resb 1
+stack_bottom resb 1024                  ; 1Kib stack early on
+
+stack_top:
+mbr_redzone resb 32
+end_bss:
