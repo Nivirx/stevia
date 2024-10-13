@@ -19,7 +19,7 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0x7A00]
+[ORG 0x0600]
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
