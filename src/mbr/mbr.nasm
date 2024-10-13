@@ -42,16 +42,18 @@ nop
 
 ALIGN 4
 init:
-    cli                         ; We do not want to be interrupted
+    cli                             ; We do not want to be interrupted
 
-    xor ax, ax                  ; 0 AX
-    mov ds, ax                  ; Set segment registers to 0
+    xor ax, ax                      ; 0 AX
+    mov ds, ax                      ; Set segment registers to 0
+    mov es, ax
+    
+    mov ss, ax                      ; Set Stack Segment to 0
+    mov sp, EARLY_STACK_START       ; Setup stack
+    mov bp, sp                      ; base ptr = stack ptr
+    sub sp, 0x10                    ; local varible space             
 
-    mov ss, ax                  ; Set Stack Segment to 0
-    mov sp, EARLY_STACK_START   ; Setup stack
-    mov bp, sp                  ; base ptr = stack ptr
-    sub sp, 0x20                ; local varible space             
-
+    xor cx, cx
     mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
     mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)
     mov di, MBR_ENTRY               ; New MBR Address (our new relocation address)
@@ -115,12 +117,11 @@ main:
         mov dword eax, dword [bx + PartEntry_t.lba_start]
         push dword eax                                     ; lba
 
-        xor ax, ax
-        push ax                                            ; offset = 0
-
         mov ax, VBR_ENTRY
-        shr ax, 4
-        push ax                                            ; segment = 7C0
+        push ax                                            ; offset = 0x7c00
+
+        xor ax, ax
+        push ax                                            ; segment = 0
 
         ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
         ;                         uint32_t lba,

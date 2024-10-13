@@ -21,10 +21,10 @@
 %ifndef __INC_ENTRY
 
 ; 8KiB from 0x2500 -> 0x500
-%define EARLY_STACK_START            0x2500
+%define EARLY_STACK_START            0xFFFF
 %define MBR_ENTRY                    0x0600
 %define VBR_ENTRY                    0x7C00
-%define STAGE2_ENTRY                 0x7E00
+%define STAGE2_ENTRY                 0x0500
 
 %endif
 %define __INC_ENTRY

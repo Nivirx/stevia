@@ -19,7 +19,7 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0x7E00]
+[ORG 0x0500]                            ; IF YOU CHANGE ORG CHANGE THE SIGN OFFSET AT THE END
 [CPU KATMAI]
 [map all stage2.map]
 [WARNING -reloc-abs-byte]
@@ -47,7 +47,7 @@
 %endmacro
 
 section .text
-org 0x7E00
+org 0x0500
 
 begin_text:
 jmp short (init - $$)
@@ -56,6 +56,18 @@ nop
 ALIGN 4, db 0x90
 init:
     cli                               ; We do not want to be interrupted
+
+    mov cx, (end_bss - begin_bss)     ; count = bss length
+
+    mov ax, begin_bss
+    shr ax, 4
+    mov es, ax                        ; es = begining of bss section
+
+    xor ax, ax
+    mov di, ax                        ; dst = 0
+
+    cld
+    rep stosb                         ; zero bss section
 
     mov ax, __STAGE2_SEGMENT          ; configured segment
     mov ds, ax                        ; Set segment registers to 0
@@ -128,11 +140,8 @@ main:
 
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
-    je main.bss_init
+    je main.stage2_main
     ERROR STAGE2_SIGNATURE_MISSING
-
-.bss_init:
-    nop             ; placeholder
 .stage2_main:
     call SetTextMode
     call disable_cursor
@@ -396,8 +405,9 @@ unreal_gdt_start:
     dw 0xFFFF            ; Segment Limit 15:0
     dw 0x0000            ; Base Address 15:0
     db 0000_0000b        ; Base Address 23:16
+    
     db 1001_1010b        ; Access Byte: executable, readable, present
-    db 0000_1111b        ; Flags: 16-bit, Granularity = 4KiB
+    db 1000_1111b        ; 24:20 G/DB/L/AVL & SegLimit 19:16
     db 0000_0000b        ; Base Address 31:24
 
     ; entry 2 (16-bit data segment with 4 GiB flat mapping)
@@ -405,7 +415,7 @@ unreal_gdt_start:
     dw 0x0000            ; Base Address 15:0
     db 0000_0000b        ; Base Address 23:16
     db 1001_0010b        ; Access Byte: readable, writable, present
-    db 0000_1111b        ; Flags: 16-bit, Granularity = 4KiB
+    db 1000_1111b        ; Flags: 16-bit, Granularity = 4KiB
     db 0000_0000b        ; Base Address 31:24
 unreal_gdt_end:
 
@@ -459,7 +469,7 @@ end_data:
 
 ; section start location needs to be a 'critical expression'
 ; i.e resolvable at build time, we are setting 0x7E00 as the offset since
-section .sign start=((MAX_STAGE2_BYTES - 512) + 0x7E00)
+section .sign start=((MAX_STAGE2_BYTES - 512) + 0x0500)
 times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
 STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
 
@@ -474,7 +484,6 @@ stage2_main_redzone resb 32
 SteviaInfo resd 4
 fat32_state resb FAT32_State_t_size
 
-align 512
 disk_buffer resb 512
 
 fat_buffer resb 512
