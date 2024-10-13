@@ -36,6 +36,29 @@ struc LBAPkt_t
     .lower_lba   resd 1
     .upper_lba   resd 1
 endstruc
+; call_read_disk_raw <word segment> <word offset> <dword lba> <word count> <word drive_num>
+%macro call_read_disk_raw 5
+    movzx ax, %5
+    push ax                                            ; drive_num
+
+    movzx ax, %4
+    push ax                                            ; count
+
+    movzx dword eax, %3
+    push dword eax                                     ; lba
+
+    movzx ax, %2
+    push ax                                            ; offset
+
+    movzx ax, %1
+    push ax                                            ; segment = 0
+
+    ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
+    ;                         uint32_t lba,
+    ;                         uint16_t count, uint16_t drive_num)
+    call read_disk_raw
+    add sp, 0xC
+%endmacro
 
 ; Wrapper for AH=0x42 INT13h (Extended Read)
 ;
