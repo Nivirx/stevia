@@ -63,6 +63,7 @@
 ;                           resulting in a value which does not fit in the Number of Sectors entry at 0x13. 
 
 struc FAT32_bpb_t
+    .reserved_init             resb 3
     .ident_8                   resb 8
     .bytes_per_sector_16       resb 2
     .sectors_per_cluster_8     resb 1
