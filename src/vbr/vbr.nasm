@@ -115,13 +115,12 @@ main:
     mov dword eax, 0x1
     push dword eax                                     ; lba
 
-    xor ax, ax
-    push ax                                            ; offset = 0
 
-    ; 07E0:0 = 0x00007e00
     mov ax, STAGE2_ENTRY
-    shr ax, 4
-    push ax                                            ; segment = 7E0
+    push ax                                            ; offset
+
+    xor ax, ax
+    push ax                                            ; segment = 0
 
     ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
     ;                         uint32_t lba,
@@ -130,11 +129,8 @@ main:
     add sp, 0xC
 
 .check_sig:
-    ; BUG: this is hard coded to check @ ((0x7E0 << 4) + 0x7FFC)...i.e (STAGE2_ENTRY + (STAGE2_MAX_BYTES - 4))
-    ; this should be removed or done properly
-    mov ax, 0x7E0
-    mov fs, ax
-    cmp dword [fs:0x7FFC], 0xDEADBEEF
+    mov eax, dword [(MAX_STAGE2_BYTES - 4) + 0x500]
+    cmp eax, 0xDEADBEEF
     je main.sig_ok
 
     ERROR VBR_ERROR_NO_SIGNATURE          ; no signature present in stage2
@@ -142,7 +138,7 @@ main:
 .sig_ok:
     mov si, word [bp - 4]
     mov dl, byte [bp - 2]
-    jmp word 0x0000:0x7E00
+    jmp word 0x0000:STAGE2_ENTRY
 
 ; ###############
 ; Required BIOS function(s)
