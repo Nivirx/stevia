@@ -161,6 +161,7 @@ main:
 
         mov si, word [bp - 4]
         mov dl, byte [bp - 2]
+        mov bx, partition_table
         jmp word 0x0000:0x7C00
 
 ; ###############
