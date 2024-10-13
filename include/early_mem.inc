@@ -43,28 +43,6 @@
 ; 0x0000000100000000  	    ???	            ??? (whatever exists) 	    RAM -- free for use (PAE/64bit)/More Extended memory
 ; ???????????????? 	        ??? 	        ??? 	                    Potentially usable for memory mapped PCI devices in modern hardware (but typically not, due to backward compatibility) 
 
-; copy of partition table, 72 bytes
-%define partition_table       0x3000
-%define partition_table_SIZE  72
-
-; copy of FAT32 BPB, 33 bytes (+1 to the next value to align to uint16_t)
-;0x3048
-%define fat32_bpb             0x304A
-%define fat32_bpb_SIZE        36
-
-; copy of FAT32 EBPB, 54 bytes
-;0x306A
-%define fat32_ebpb            0x306E
-%define fat32_ebpb_SIZE       54
-
-
-; next free space is 0x32D0
-%define fat32_nc_data         0x35D0
-%define fat32_nc_data_SIZE    16
-
-; lba_packet for raw_disk_read
-%define lba_packet            0x4000
-
 ;PhysicalAddress = Segment * 16 + Offset
 %define SEG_TO_LINEAR(s,o) ((s << 4) + o)
 
