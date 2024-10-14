@@ -22,7 +22,12 @@
 
 %macro ERROR 1
     mov al, %1           ; al = 1 byte error code mapped to ascii values
+    %ifdef __STEVIA_DEV_DEBUG
+    __BOCHS_MAGIC_DEBUG
+    %endif
     jmp error
+    
+    
 %endmacro
 
 ; pass error as ascii character in al, errors a-zA-Z or 0-9
