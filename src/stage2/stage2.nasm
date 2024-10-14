@@ -86,11 +86,13 @@ init:
     mov ss, ax                        ; Set Stack Segment to data segment
     mov sp, stack_top                 ; Set Stack Pointer
 
+    mov ax, init
+    push ax                           ; simulate a return value to the begining of the stage2 loader
+
+    push bp
     mov bp, sp
     sub sp, 0x20                      ; 32 bytes for local varibles
-
     sti
-
     jmp word __STAGE2_SEGMENT:main
 
 ; ###############
@@ -105,11 +107,6 @@ init:
 ; ###############
 ; FAT32 Driver
 ; ###############
-
-boot_drive_ptr:
-    dw 0x0000
-partition_offset_ptr:
-    dw 0x0000
 
 %include 'fat32/FAT32_SYS.inc'
 
@@ -191,7 +188,6 @@ main:
     call InitFATDriver
     print_string InitFATSYS_OK_cstr
 
-    ERROR STEVIA_DEBUG_HALT
     ;
     ; Find first cluster of bootable file
     ;
@@ -201,11 +197,9 @@ main:
     push dword eax
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
     add sp, 0x4
-    print_string NewLine_cstr
-    
+    print_string NewLine_cstr  
 hcf:
-    hlt
-    jmp short (hcf - $$)
+    ERROR STEVIA_DEBUG_OK
 
 ; ##############################
 ;
@@ -505,6 +499,10 @@ stack_top:
 stage2_main_redzone:
     resb 32
 
+;
+; structures
+;
+
 align 16, resb 1
 partition_table resb PartTable_t_size
 
@@ -519,18 +517,24 @@ align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 16, resb 1
-SteviaInfo:
-    resd 4
-align 16, resb 1
 fat32_state:
     resb FAT32_State_t_size
 
 align 16, resb 1
-mbr_sector_data:
-    resb 512
-vbr_sector_data:
-    resb 512
+SteviaInfo:
+    resd 4
 
+;
+; locals
+;
+boot_drive_ptr:
+    resw 1
+partition_offset_ptr:
+    resw 1
+
+;
+; large continuous allocations
+;
 align 16, resb 1
 disk_buffer:
     resb 512

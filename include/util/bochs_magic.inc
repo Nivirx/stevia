@@ -20,7 +20,8 @@
 
 %ifndef __INC_BOCHS_DEBUG_MAGIC
 
-;
+; for things like the error printer, opperate differently when we are targeting a dev (bochs) build
+%define __STEVIA_DEV_DEBUG
 ; port_e9_hack: enabled=1 needs to be set in bochsrc.txt/bxrc
 ;
 %ifnmacro __BOCHS_PRINTC
