@@ -83,37 +83,33 @@ ALIGN 4, db 0x90
 read_disk_raw:
     __CDECL16_ENTRY
 .func:                        
-    mov ax, 0x10
-    push ax             ; len = 16 bytes
+    mov ax, LBAPkt_t_size
+    push ax                 ; len
     xor ax, ax
-    push ax             ; val = 0
+    push ax                 ; val = 0
     mov ax, lba_packet
-    push ax             ; dest = lba_packet address
+    mov bx, ax
+    push ax                 ; dest = lba_packet address
     call kmemset        
     add sp, 0x06
 
-    mov byte [lba_packet + LBAPkt_t.size], 0x10
+    mov byte [bx + LBAPkt_t.size], 0x10
 
     mov ax, [bp + 12]
-    mov word [lba_packet + LBAPkt_t.xfer_size], ax
+    mov word [bx + LBAPkt_t.xfer_size], ax
 
     mov eax, [bp + 8]
-    mov dword [lba_packet + LBAPkt_t.lower_lba], eax
+    mov dword [bx + LBAPkt_t.lower_lba], eax
 
     mov ax, [bp + 6]
-    mov word [lba_packet + LBAPkt_t.offset], ax
+    mov word [bx + LBAPkt_t.offset], ax
 
     mov ax, [bp + 4]
-    mov word [lba_packet + LBAPkt_t.segment], ax
+    mov word [bx + LBAPkt_t.segment], ax
 
-    mov si, lba_packet
-    mov ah, 0x42
-
-    ;BUG: still working on getting this passed down correctly, going to hard set it for now.
-    movzx dx, byte [bp + 14]                   
-    and dx, 0x00ff
-    ;xor dl, dl
-    ;mov dl, 0x80
+    mov si, bx                  ; ds:si LBAPkt_t
+    mov ah, 0x42                ; call #
+    mov dl, byte [bp + 14]      ; drive #             
 
     int 0x13
     jnc .endf
