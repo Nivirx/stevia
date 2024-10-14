@@ -78,7 +78,7 @@ endstruc
 ;
 ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
 ;                         uint32_t lba,
-;                         uint16_t count, uint16_t drive_num)
+;                         uint16_t count, uint8_t drive_num)
 ALIGN 4, db 0x90
 read_disk_raw:
     __CDECL16_ENTRY
@@ -88,12 +88,12 @@ read_disk_raw:
     xor ax, ax
     push ax                 ; val = 0
     mov ax, lba_packet
-    mov bx, ax
     push ax                 ; dest = lba_packet address
     call kmemset        
     add sp, 0x06
 
-    mov byte [bx + LBAPkt_t.size], 0x10
+    mov bx, lba_packet
+    mov byte [bx + LBAPkt_t.size], LBAPkt_t_size
 
     mov ax, [bp + 12]
     mov word [bx + LBAPkt_t.xfer_size], ax
@@ -104,7 +104,7 @@ read_disk_raw:
     mov ax, [bp + 6]
     mov word [bx + LBAPkt_t.offset], ax
 
-    mov ax, [bp + 4]
+    movzx ax, byte [bp + 4]
     mov word [bx + LBAPkt_t.segment], ax
 
     mov si, bx                  ; ds:si LBAPkt_t

@@ -39,7 +39,7 @@ InitFATDriver:
 
 .calc_active_part:
     mov bx, [partition_offset_ptr]
-    mov ax, [bx + 0]                     
+    mov ax, word [ds:bx]                     
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
@@ -93,14 +93,14 @@ SearchFATDIR:
     .load_first_dir:
         mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
         push dword eax          ; cluster
-        lea ax, [dir_buffer]
+        mov ax, dir_buffer
         push ax                 ; offset
         xor ax, ax
         push ax                 ; segment
         call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
         add sp, 0x8
 
-        lea si, [dir_buffer]
+        mov si, dir_buffer
         jmp SearchFATDIR.empty_dir_entry
 
     .load_next_dir:
@@ -121,7 +121,7 @@ SearchFATDIR:
         mov eax, [fat32_state + FAT32_State_t.active_dir_cluster_32]
         push dword eax          ; cluster
 
-        lea ax, [dir_buffer]    
+        mov ax, dir_buffer    
         push ax                 ; offset
 
         xor ax, ax
@@ -129,7 +129,7 @@ SearchFATDIR:
         call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
         sub sp, 0x8
 
-        lea si, [dir_buffer]
+        mov si, dir_buffer
     .empty_dir_entry:
         ; check for 0x0 in first byte, if true then there are no more files
         ; if true we did not find the file, we should error here
@@ -151,7 +151,7 @@ SearchFATDIR:
         ; if we are at the end of the buffer, then load the next buffer
         add si, 0x20        ; 32 bytes
 
-        lea ax, [dir_buffer]
+        mov ax, dir_buffer
         add ax, 0x1FF       ; 512 - 1 bytes
         cmp si, ax
         jae SearchFATDIR.load_next_dir
@@ -169,7 +169,7 @@ SearchFATDIR:
 
             mov cx, 0xA                     ; max of 11 filename length of 11 characters
             ; si points to the start of the current directory entry
-            lea di, [BootTarget_str]        ; current memory location (8.3 name is at offset 0)
+            mov di, BootTarget_str          ; current memory location (8.3 name is at offset 0)
             repe cmpsb                      ; compare the strings
 
             pop di
@@ -195,10 +195,8 @@ NextCluster:
     __CDECL16_ENTRY
 .func:
     mov bx, [boot_drive_ptr]
-    movzx ax, byte [bx + 0]
-    mov byte [bp - 2], al                         ; save boot drive as a local for easy access
-    ;movzx ax, byte [bx + 0]                      ; 67h override would probably work but this is the 16bit way to do it
-    ;mov byte [bp - 2], al                        ; save boot drive as a local for easy access
+    movzx ax, byte [ds:bx]
+    mov byte [bp - 2], al                        ; save boot drive as a local for easy access
 
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data
@@ -237,6 +235,7 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
+    __BOCHS_MAGIC_DEBUG
     movzx ax, byte [bp - 2]
     push ax
 
@@ -287,9 +286,9 @@ ClusterToLBA:
 ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
-.func:  
+.func:
     mov bx, [boot_drive_ptr]
-    movzx ax, byte [bx + 0]
+    movzx ax, byte [ds:bx]
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
 
     mov dword eax, [bp + 8]
