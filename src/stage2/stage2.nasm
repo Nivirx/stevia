@@ -180,19 +180,26 @@ main:
     call GetMemoryMap
     print_string MemoryMap_OK_cstr
 
+    __BOCHS_MAGIC_DEBUG
     ; FAT Driver setup
     call InitFATDriver
     print_string InitFATSYS_OK_cstr
 
     ;
     ; Find first cluster of bootable file
-    ;
+    __BOCHS_MAGIC_DEBUG
     call SearchFATDIR
-    push dword eax
+    push dword eax      ; save first cluster of bootable file
+
     print_string FileFound_OK_cstr
-    push dword eax
+    
+    pop dword eax
+    push dword eax      ; print Cluster of boot file
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    print_string NewLine_cstr  
+    print_string NewLine_cstr
+
+    ; TODO: using first cluster information, start loading the kernel to memory
+    ; TODO: going to need an elf parser,  some unreal mode file buffer functions to move the data
 hcf:
     ERROR STEVIA_DEBUG_OK
 
@@ -262,7 +269,7 @@ PrintDWORD:
     lea si, [IntToHex_table]
     mov ebx, 16     ; base-16
 
-    mov dword eax, [bp + 4]     ;val
+    mov eax, dword [bp + 4]     ;val
 
     xor edx, edx
     xor cx, cx
@@ -292,7 +299,7 @@ PrintDWORD:
     push ax
     call PrintCharacter
     add sp, 0x2
-    
+
     pop cx
 
     jcxz PrintDWORD.endp
