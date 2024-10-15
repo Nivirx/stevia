@@ -39,6 +39,8 @@ struc PartEntry_t
 endstruc
 
 struc PartTable_t
+    .signature resb 4
+    .reserved  resb 2
     .partition1 resb PartEntry_t_size
     .partition2 resb PartEntry_t_size
     .partition3 resb PartEntry_t_size
