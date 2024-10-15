@@ -180,14 +180,12 @@ main:
     call GetMemoryMap
     print_string MemoryMap_OK_cstr
 
-    __BOCHS_MAGIC_DEBUG
     ; FAT Driver setup
     call InitFATDriver
     print_string InitFATSYS_OK_cstr
 
     ;
     ; Find first cluster of bootable file
-    __BOCHS_MAGIC_DEBUG
     call SearchFATDIR
     push dword eax      ; save first cluster of bootable file
 
@@ -381,7 +379,7 @@ begin_data:
 ; #############
 
 %macro define_str 2
-    ALIGN 4
+    ALIGN 16
     %1_str:
         db %2
     %define str_len %strlen(%2)       ; string
@@ -394,7 +392,7 @@ begin_data:
 ; TODO: place that newline and return
 %macro define_cstr 2
 %define CRLF_NUL 0Dh, 0Ah, 00h
-    ALIGN 4
+    ALIGN 16
     %1_cstr:
         db %2, CRLF_NUL
 %endmacro
@@ -410,7 +408,7 @@ define_cstr NewLine, ""
 
 define_str BootTarget, "BOOT    BIN"
 
-ALIGN 4
+ALIGN 16
 IntToHex_table:
     db '0123456789ABCDEF'
 
@@ -474,13 +472,21 @@ gdt32_start:
         db 0x00
 gdt32_end:
 
-ALIGN 8
-version_magic:
+ALIGN 8,db 0x00
+BUILD_NASM_VER:
     db "Stevia Stage2 built with NASM - ", __NASM_VER__, 00h
 
-ALIGN 8
-datetime_magic:
+ALIGN 8,db 0x00
+BUILD_DATETIME:
     db 'Assembled - ', __DATE__, ' ', __TIME__, 00h
+
+ALIGN 8,db 0x00
+BUILD_GIT_VER:
+    db __GIT_VER__, 00h
+
+ALIGN 8,db 0x00
+BUILD_GIT_HASH:
+    db __GIT_HASH__, 00h
 end_data:
 
 %assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - ($ - $$))

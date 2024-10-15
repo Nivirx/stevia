@@ -1,6 +1,3 @@
-iso := '/tmp/disk.img'
-isoz := 'disk.img.gz'
-
 include := './include'
 
 mbr_source_files := $(wildcard src/mbr/*.nasm)
@@ -14,6 +11,14 @@ stage2_binary_files := $(patsubst src/stage2/%.nasm, build/%.bin, $(stage2_sourc
 boottest_binary_files := $(patsubst src/miniboot32/%.nasm, build/%.bin, $(boottest_source_files))
 
 build_dir := 'build'
+
+# Get current Git version (tag) and hash
+GIT_VERSION := $(shell git describe --tags)
+GIT_HASH := $(shell git rev-parse HEAD)
+GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HASH)"'
+
+iso := '/tmp/disk.img'
+isoz := 'disk.img.gz'
 
 qemu_args := -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
 .PHONY: all mbr vbr stage2 boottest clean run run_bochs iso isoz
@@ -44,19 +49,19 @@ isoz: $(isoz)
 
 build/%.bin: src/mbr/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $< -o $@
+	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/vbr/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $< -o $@
+	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/stage2/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $< -o $@
+	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/miniboot32/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $< -o $@
+	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
 
 $(iso): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
 	@echo root access needed to create disk image...
