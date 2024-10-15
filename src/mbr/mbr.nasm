@@ -19,7 +19,7 @@
 ; SOFTWARE.
 
 [BITS 16]
-[ORG 0x0600]
+[ORG 0x8C00]
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
@@ -49,7 +49,10 @@ init:
     mov fs, ax
     mov gs, ax
 
-    ;
+    mov ss, ax                      ; Set Stack Segment to 0
+    mov sp, end_bss                 ; Setup stack
+    mov bp, sp                      ; base ptr = stack ptr
+    
     ; Zero BSS section
     mov cx, (end_bss - begin_bss)     ; count = bss length                    
     mov ax, begin_bss
@@ -58,16 +61,14 @@ init:
     cld
     rep stosb                         ; zero bss section
 
-    mov ss, ax                      ; Set Stack Segment to 0
-    mov sp, stack_top               ; Setup stack
-    mov bp, sp                      ; base ptr = stack ptr
-    sub sp, 0x10                    ; local varible space
+    sub sp, 0x20                    ; local varible space
+    push bp                         ; setup top of stack frame
 
     xor cx, cx
-    mov ch, 0x01                    ; 256 WORDs in MBR (512 bytes), 0x0100 in cx
+    mov ch, 0x02                    ; 0x0200 in cx
     mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)
     mov di, MBR_ENTRY               ; New MBR Address (our new relocation address)
-    rep movsw                       ; copy 512 bytes from 0x0000:7c00 to 0x0000:MBR_ENTRY (7A00 as of writing)
+    rep movsb                       ; copy 512 bytes from 0x0000:7c00 to 0x0000:MBR_ENTRY (7A00 as of writing)
 
     sti
 
@@ -88,14 +89,16 @@ main:
     mov byte [bp - 2], dl            ; BIOS passes drive number in DL
 
     .check_disk:
-        cmp dl, 0x80
+        cmp byte [bp - 2], 0x80
         jae main.check_extentions
+
         ERROR MBR_ERROR_DISK_T_ERR
 
     .check_extentions:
         xor ax, ax
+        mov ah, 0x41
         mov bx, 0x55AA
-        mov dl, byte [bp - 2]
+        mov dl, 0x80
         int 0x13
         jnc main.find_active
         ERROR MBR_ERROR_NO_INT32E                         ; no extended function support
@@ -107,9 +110,9 @@ main:
         mov al, byte [bx + PartEntry_t.attributes]
         test al, 0x80                           ; 0x80 == 1000_0000b
         jnz main.active_found
-
         add bx, 0x10                            ; add 16 bytes to offset
         loop main.find_active_L0
+
         ERROR MBR_ERROR_NO_NO_BOOT_PART
 
     .active_found:
@@ -151,11 +154,12 @@ main:
         push ax
         call kmemcpy                            ; copy partition table to bss
         add sp, 0x6
-
+        
         mov si, word [bp - 4]
         mov dl, byte [bp - 2]
         mov bx, partition_table
-        jmp word 0x0000:0x7C00
+        __BOCHS_MAGIC_DEBUG
+        jmp word 0x0000:VBR_ENTRY
 
 ; ###############
 ;
@@ -171,11 +175,8 @@ times ((512 - 72) - ($ - $$)) nop     ; Fill the rest of sector with nop
 
 DiskSig:
     times 4 db 0x00
-Reserved1:
-    db 0x00
-Reserved2:
-    db 0x00
-
+Reserved:
+    dw 0x0000
 PartEntry1:
     times 16 db 0x00
 PartEntry2:
@@ -186,7 +187,7 @@ PartEntry4:
     times 16 db 0x00
 BootSig:
     dw 0xAA55                    ; Add boot signature at the end of bootloader
-; this should mark the 512 byte mark...if not, something has gone wrong.
+
 section .bss follows=.text
 begin_bss:
 
@@ -194,18 +195,10 @@ align 16, resb 1
 partition_table resb PartTable_t_size
 
 align 16, resb 1
-fat32_bpb resb FAT32_bpb_t_size
-fat32_ebpb resb FAT32_ebpb_t_size
-
-align 16, resb 1
-fat32_nc_data resb 16
-
-align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb 1024                  ; 1Kib stack early on
-
+stack_bottom resb 512                  ; 512 byte stack early on
 stack_top:
 mbr_redzone resb 32
 end_bss:
