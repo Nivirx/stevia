@@ -48,9 +48,6 @@
 
 section .text
 begin_text:
-jmp short (init - $$)
-nop
-
 ; dl = byte boot_drive
 ; si = word part_offset (active partition offset)
 ; bx = ptr PartTable_t partition_table
@@ -489,7 +486,7 @@ BUILD_GIT_HASH:
     db __GIT_HASH__, 00h
 end_data:
 
-%assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - ($ - $$))
+%assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - (($ - $$) + (end_text - begin_text)))
 %warning STAGE2 has bytes_remaining bytes remaining for code/data (MAX: MAX_STAGE2_BYTES)
 
 ; section start location needs to be a 'critical expression'
