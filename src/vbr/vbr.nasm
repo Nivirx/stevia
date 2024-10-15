@@ -50,7 +50,6 @@ times 54 db 0x00
 %include "error_codes.inc"
 %include "partition_table.inc"
 %include "fat32/fat32_structures.inc"
-%include "fat32/bpb_offset_bx.inc"
 ;
 ; dl = boot_drive
 ; si = part_offset
@@ -61,6 +60,12 @@ init:
     xor ax, ax                      
     mov ds, ax                      ; Set segment registers to 0x0000
     mov es, ax
+    mov fs, ax
+    mov gs, ax
+    
+    mov ss, ax                      ; Set Stack Segment to 0
+    mov sp, end_bss                 ; Setup stack
+    mov bp, sp                      ; base ptr = stack ptr
 
     ; zero bss section
     mov cx, (end_bss - begin_bss)     ; count = bss length                    
@@ -68,15 +73,11 @@ init:
     mov di, ax                        ; es:di is dest
     xor ax, ax
     cld
-    rep stosb                         
+    rep stosb                          
+    
+    sub sp, 0x20                    ; local varible space
+    push bp
 
-    xor ax, ax
-    mov ss, ax                      ; Set Stack Segment to 0
-    mov sp, stack_top               ; Setup stack
-    mov bp, sp                      ; base ptr = stack ptr
-    sub sp, 0x10                    ; local varible space
-
-    mov cx, bx                      ; mov partition_table locaiton to cx
     sti                             ; all done with inital setup and relocation, reenable interupts
 
     jmp 0:main                      ; fix up cs:ip just in case and jump to relocated code
@@ -100,18 +101,19 @@ ALIGN 4, db 0x90
 main:
     mov byte [bp - 2], dl                 ; boot_drive
     mov word [bp - 4], si                 ; part_offset
-    mov word [bp - 6], cx                 ; partition_table
+    mov word [bp - 6], bx                 ; partition_table
 
 .load_fs_data:
-    mov ax, PartTable_t_size
+    mov ax, PartTable_t_size                           ; count=
+    push ax                                             
+    mov ax, [bp - 6]                                   ; src= ptr partition_table
     push ax
-    mov ax, [bp - 6]                                    ; ptr partition_table
-    mov ax, partition_table                                  
+    mov ax, partition_table                            ; dst=      
     push ax
     call kmemcpy                                       ; copy partition table data
     add sp, 0x6
-                                          
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)     ; size in byte
+
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)     ; size in byte, should be 90 bytes
     push ax
     mov ax, __ENTRY                                    
     push ax
@@ -120,9 +122,9 @@ main:
     call kmemcpy                                       ; copy bpb & ebpb to memory
     add sp, 0x6
 
-    mov bx, fat32_bpb                                  ; bx now points to aligned memory structure
 .check_FAT_size:                     ; we only support a very specific setup of FAT32
-    cmp dword [bsSectorHuge], 0      ; SectorsHuge will not be set if FAT12/16
+    mov bx, fat32_bpb
+    cmp dword [bx + FAT32_bpb_t.sector_count_32], 0      ; SectorsHuge will not be set if FAT12/16
     ja main.load_stage2
     ERROR VBR_ERROR_WRONG_FAT_SIZE
 .load_stage2:
@@ -185,8 +187,7 @@ align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb 1024                  ; 1Kib stack early on
-
+stack_bottom resb 512                  ; 512b stack early on
 stack_top:
 vbr_redzone resb 32
 end_bss:
