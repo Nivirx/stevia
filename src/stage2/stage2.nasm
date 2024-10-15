@@ -47,8 +47,6 @@
 %endmacro
 
 section .text
-org 0x0500
-
 begin_text:
 jmp short (init - $$)
 nop
@@ -59,39 +57,36 @@ nop
 ; dx = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
+    __BOCHS_MAGIC_DEBUG
     cli                               ; We do not want to be interrupted
 
-    ;
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, excep es
+    mov ds, ax                        ; *
+    mov fs, ax                        ; *
+    mov gs, ax                        ; *
+    mov ss, ax
+    
     ; Zero BSS section
-    ;
     mov cx, (end_bss - begin_bss)     ; count = bss length
 
     mov ax, begin_bss
     shr ax, 4
-    mov es, ax                        ; es = begining of bss section
+    mov es, ax                        ; es = begining of bss section, remember to restore ES later
 
-    xor ax, ax
-    mov di, ax                        ; dst = 0
-
+    xor ax, ax                        ; val = 0
+    mov di, ax                        ; dst = 0 (start of segment)
     cld
-    rep stosb                         ; zero bss section
-    ; done zeroing BSS
+    rep stosb 
 
-    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment
-    mov ds, ax                        ; *
-    mov es, ax                        ; *
-    mov fs, ax                        ; *
-    mov gs, ax                        ; *
+    mov ax, __STAGE2_SEGMENT
+    mov es, ax  
+    ; done zeroing bss section
 
-    mov ss, ax                        ; Set Stack Segment to data segment
-    mov sp, stack_top                 ; Set Stack Pointer
-
-    mov ax, init
-    push ax                           ; simulate a return value to the begining of the stage2 loader
-
-    push bp
+    mov sp, stack_top
     mov bp, sp
-    sub sp, 0x20                      ; 32 bytes for local varibles
+    sub sp, 0x20
+    push bp                           ; setup a somewhat normal stack frame, minus a ret ptr
+
     sti
     jmp word __STAGE2_SEGMENT:main
 
@@ -154,14 +149,15 @@ main:
     mov ax, PartTable_t_size
     push ax
     mov ax, [bp - 6]                                    ; ptr partition_table
+    push ax
     mov ax, partition_table                                  
     push ax
     call kmemcpy                                       ; copy partition table data
     add sp, 0x6
-                                          
+
     mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
     push ax
-    mov ax, [bp - 8]                                    ; start of bpb - 0x3 for the jump short main at the start
+    mov ax, [bp - 8]                                    
     push ax
     mov ax, fat32_bpb                                  ; defined in memory.inc, destination
     push ax
@@ -196,7 +192,6 @@ main:
     print_string FileFound_OK_cstr
     push dword eax
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    add sp, 0x4
     print_string NewLine_cstr  
 hcf:
     ERROR STEVIA_DEBUG_OK
@@ -297,7 +292,7 @@ PrintDWORD:
     push ax
     call PrintCharacter
     add sp, 0x2
-
+    
     pop cx
 
     jcxz PrintDWORD.endp
@@ -491,17 +486,8 @@ times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
 STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
 
 section .bss follows=.sign
-align 512, resb 1
 begin_bss:
-stack_bottom:
-    resb 4096
-stack_top:
-stage2_main_redzone:
-    resb 32
-
-;
 ; structures
-;
 
 align 16, resb 1
 partition_table resb PartTable_t_size
@@ -550,4 +536,8 @@ align 16, resb 1
 BIOSMemoryMap:
     resb 2048
 
+align 512, resb 1
+stack_bottom:
+    resb 1024
+stack_top:
 end_bss:
