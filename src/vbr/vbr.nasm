@@ -50,7 +50,9 @@ times 54 db 0x00
 %include "error_codes.inc"
 %include "partition_table.inc"
 %include "fat32/fat32_structures.inc"
-;
+
+%undef __STEVIA_DEV_DEBUG
+
 ; dl = boot_drive
 ; si = part_offset
 ; bx = partition_table location from mbr

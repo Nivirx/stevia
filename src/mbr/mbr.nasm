@@ -40,6 +40,8 @@ nop
 %include "partition_table.inc"
 %include "fat32/fat32_structures.inc"
 
+%undef __STEVIA_DEV_DEBUG
+
 ALIGN 4
 init:
     cli                             ; We do not want to be interrupted
@@ -158,7 +160,6 @@ main:
         mov si, word [bp - 4]
         mov dl, byte [bp - 2]
         mov bx, partition_table
-        __BOCHS_MAGIC_DEBUG
         jmp word 0x0000:VBR_ENTRY
 
 ; ###############
