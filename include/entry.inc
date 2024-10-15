@@ -22,7 +22,7 @@
 
 %define MBR_ENTRY                    0x8C00
 %define VBR_ENTRY                    0x7C00
-%define STAGE2_ENTRY                 0x0600
+%define STAGE2_ENTRY                 0x0500
 
 %endif
 %define __INC_ENTRY
