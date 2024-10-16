@@ -400,8 +400,12 @@ define_cstr MemoryMap_OK, "Memory map OK"
 define_cstr UnrealMode_OK, "Unreal mode OK"
 define_cstr FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
 define_cstr InitFATSYS_OK, "FAT32 Driver Init..."
-define_cstr NewLine, ""
 
+define_cstr SearchFATDIR_INFO, "Searching FAT DIR for bootable file..."
+define_cstr NextFATCluster_INFO, "Attempting to find next FAT cluster..."
+define_cstr ReadFATCluster_INFO, "Attempting to load next FAT"
+define_cstr MaybeFound_Boot_INFO, "Maybe found a file...checking..."
+define_cstr NewLine, ""
 
 define_str BootTarget, "BOOT    BIN"
 
