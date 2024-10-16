@@ -90,6 +90,8 @@ ALIGN 4, db 0x90
 SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
+    print_string SearchFATDIR_INFO_cstr
+
     .load_first_dir:
         mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
         push dword eax          ; cluster
@@ -156,6 +158,7 @@ SearchFATDIR:
         jmp SearchFATDIR.empty_dir_entry
 
     .parse_dir:
+        print_string MaybeFound_Boot_INFO_cstr
         .lfn_check:
             ; check for ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID  (0x0F) in offset 11
             ; TODO: going to skip LFN for now, since all valid volumes will have SFN's
@@ -182,8 +185,8 @@ SearchFATDIR:
 .endp:
     __CDECL16_EXIT
     ret
+
 ; BUG: this function needs review
-;
 ; bp - 2 - byte boot_drive
 ; uint32_t NextCluster(uint32_t active_cluster);
 ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
@@ -192,6 +195,8 @@ ALIGN 4, db 0x90
 NextCluster:
     __CDECL16_ENTRY
 .func:
+    print_string NextFATCluster_INFO_cstr
+
     mov bx, [boot_drive_ptr]
     movzx ax, byte [ds:bx]
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
@@ -202,8 +207,8 @@ NextCluster:
 .calc_offset:
 ; fat_offset = active_cluster * 4
     mov eax, 4
-    mul edx
-    mov dword [si + FAT32_NextClusterData_t.fat_offset], eax
+    mul edx                                      ; BUG: should check for carry here
+    mov dword [si + FAT32_NextClusterData_t.fat_offset], eax        ; move lower 32 bits to fat offset
 
 .calc_fat_sector:
 ; fat_sector = first_fat_sector + (fat_offset / sector_size)
@@ -282,6 +287,8 @@ ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
+    print_string ReadFATCluster_INFO_cstr
+
     mov bx, [boot_drive_ptr]
     movzx ax, byte [ds:bx]
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
