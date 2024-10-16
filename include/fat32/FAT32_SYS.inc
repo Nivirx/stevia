@@ -128,8 +128,6 @@ SearchFATDIR:
         push ax                 ; segment
         call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
         sub sp, 0x8
-
-        mov si, dir_buffer
     .empty_dir_entry:
         ; check for 0x0 in first byte, if true then there are no more files
         ; if true we did not find the file, we should error here
@@ -199,7 +197,8 @@ NextCluster:
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
 
     mov edx, dword [bp + 4]
-    mov si, fat32_nc_data
+    mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
+    mov di, fat32_bpb                            ; load si & di then use xchg
 .calc_offset:
 ; fat_offset = active_cluster * 4
     mov eax, 4
@@ -213,10 +212,9 @@ NextCluster:
     and edx, eax
     shr edx, 16
 
-    push si
-    mov si, fat32_bpb
+    xchg si, di         ; switch to fat32_bpb in si
     mov cx, word [si + FAT32_bpb_t.bytes_per_sector_16]
-    pop si
+    xchg si, di
 
     div cx              ; DX:AX / cx = fat_sector - first_fat_sector in AX
                         ; DX = remainder (fat_offset mod sector_size)
@@ -225,17 +223,15 @@ NextCluster:
     and edx, ecx
     mov dword [si + FAT32_NextClusterData_t.entry_offset], edx
 
-    push si
-    mov si, fat32_state
+    xchg si, di         ; switch to fat32_bpb in si
     mov ecx, dword [si + FAT32_State_t.first_fat_sector_32]
-    pop si
+    xchg si, di
 
     mov edx, 0x0000ffff
     and eax, edx
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    __BOCHS_MAGIC_DEBUG
     movzx ax, byte [bp - 2]
     push ax
 
@@ -280,7 +276,6 @@ ClusterToLBA:
     __CDECL16_EXIT
     ret
 
-; bp - 6 - dword lba
 ; bp - 2 - byte boot_drive
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
@@ -291,23 +286,18 @@ ReadFATCluster:
     movzx ax, byte [ds:bx]
     mov byte [bp - 2], al                        ; save boot drive as a local for easy access
 
-    mov dword eax, [bp + 8]
-    ; inline ClusterToLBA
-    sub eax, 2
-    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_8]
-    mul edx
-    add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
-    ; eax contains the LBA now
-    mov dword [bp - 6], eax             ; save lba
-
     movzx ax, byte [bp - 2]             ; drive_num = boot_drive
     push ax
 
     mov ax, 0x1                         ; count = 1
     push ax
 
-    mov eax, dword [bp - 6]             ; lba = ClusterToLBA return value 
+    mov eax, dword [bp + 8]
     push dword eax
+    call ClusterToLBA
+    add sp, 0x4
+    ; eax contains the LBA now
+    push dword eax                      ; save lba 
 
     mov ax, fat_buffer                  ; offset = fat_buffer (in mem.inc)
     push ax
