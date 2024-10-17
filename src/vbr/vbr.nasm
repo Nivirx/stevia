@@ -126,8 +126,8 @@ main:
 
 .check_FAT_size:                     ; we only support a very specific setup of FAT32
     mov bx, fat32_bpb
-    cmp dword [bx + FAT32_bpb_t.sector_count_32], 0      ; SectorsHuge will not be set if FAT12/16
-    ja main.load_stage2
+    test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
+    jz main.load_stage2
     ERROR VBR_ERROR_WRONG_FAT_SIZE
 .load_stage2:
     ; read sectors 1-(MAX_STAGE2_BYTES / 512) to stage2 entry point
