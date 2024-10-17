@@ -24,6 +24,8 @@
 %include "fat32/bpb_offset_bx.inc"
 %include "fat32/fat32_structures.inc"
 
+; Clobbers: eax, edx
+; returns: none
 ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_ENTRY
@@ -39,37 +41,44 @@ InitFATDriver:
 
 .calc_active_part:
     mov bx, [partition_offset_ptr]
-    mov ax, word [ds:bx]                     
+    mov cx, word [ds:bx]                     
+    mov ax, partition_table
+    add ax, cx
+    mov si, ax                                  ; si = offset to active partition
+    
+    mov ax, fat32_state
+    mov di, ax
 
-    mov dx, partition_table
-    add dx, ax                                                           ; dx points to the partition that was booted from
-    mov bx, dx                                                           ; set bx, should point at our partition
+    mov eax, dword [si + PartEntry_t.lba_start]
+    mov dword [di + FAT32_State_t.curr_drive_lba_32], eax
 
-    mov eax, dword [bx + PartEntry_t.lba_start]
-    mov dword [fat32_state + FAT32_State_t.active_drive_lba_32], eax
+    mov ax, fat32_bpb
+    mov si, ax
 
+    mov ax, fat32_ebpb
+    mov bx, ax
 .calc_first_fat:
-    movzx eax,  word [fat32_bpb + FAT32_bpb_t.reserved_sectors_16]        ; first fat from start of partition
-    add   eax, dword [fat32_state + FAT32_State_t.active_drive_lba_32]    ; calculate offset from start of drive
+    movzx eax,  word [si + FAT32_bpb_t.reserved_sectors_word]        ; first fat from start of partition
+    add   eax, dword [di + FAT32_State_t.curr_drive_lba_32]          ; calculate offset from start of drive
+    jc InitFATDriver.error
 
-    mov dword [fat32_state + FAT32_State_t.first_fat_sector_32], eax
+    mov dword [di + FAT32_State_t.first_fat_sector_32], eax
 .calc_total_fat:
-    mov ebx,  dword [fat32_ebpb + FAT32_ebpb_t.sectors_per_fat_32]
-    movzx eax, byte [fat32_bpb + FAT32_bpb_t.fat_count_8]
-    mul ebx                                                                ; result in EDX:EAX, CF set on > 32bit return value
+    mov edx,  dword [bx + FAT32_ebpb_t.FATSz_dword]
+    movzx eax, byte [si + FAT32_bpb_t.fat_count_byte]
+    mul edx                                                                ; result in EDX:EAX, CF set on > 32bit return value
     jc InitFATDriver.error                                                 ; as a catch for unhandled overflow, just error if value is greater than 32bits
 
-    mov dword [fat32_state + FAT32_State_t.fat_size_32], eax
+    mov dword [di + FAT32_State_t.fat_size_32], eax
 .calc_first_data:
-    mov edx, dword [fat32_state + FAT32_State_t.first_fat_sector_32]
+    mov edx, dword [di + FAT32_State_t.first_fat_sector_32]
     add eax, edx
-
-    mov dword [fat32_state + FAT32_State_t.first_data_sector_32], eax
-.get_first_root_dir:
-    mov eax, [fat32_ebpb + FAT32_ebpb_t.root_dir_cluster_32]
-    mov dword [fat32_state + FAT32_State_t.first_root_dir_sector_32], eax   ; this only works when 1 cluster = 1 sector
-    mov dword [fat32_state + FAT32_State_t.active_dir_cluster_32], eax
-
+    jc InitFATDriver.error
+    
+    mov dword [di + FAT32_State_t.first_data_sector_32], eax
+.set_first_dir:
+    mov eax, dword [bx + FAT32_ebpb_t.root_clus_dword]
+    mov dword [di + FAT32_State_t.curr_dir_cluster_32], eax
 .endp:
     __CDECL16_EXIT
     ret
@@ -108,7 +117,7 @@ SearchFATDIR:
     print_string SearchFATDIR_INFO_cstr
 
     .load_first_dir:
-        mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, dword [fat32_state + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
         mov ax, dir_buffer
         push ax                 ; offset
@@ -124,7 +133,7 @@ SearchFATDIR:
         ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
         ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
         
-        mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, dword [fat32_state + FAT32_State_t.curr_dir_cluster_32]
         push dword eax
         call NextCluster        ; uint32_t NextCluster(uint32_t active_cluster);
         add sp, 0x4
@@ -136,7 +145,7 @@ SearchFATDIR:
 
     .load_next_dir_next_OK:
         ; load 512 bytes of directory entries from data sector
-        mov eax, [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, [fat32_state + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
 
         mov ax, dir_buffer    
