@@ -134,19 +134,43 @@ endstruc
 ;   26              2                Low 16 bits of entry's first cluster
 ;   28              4                File size in bytes
 
+; FSInfo 
+; 0 	0x0 	4 	    Lead signature (must be 0x41615252 to indicate a valid FSInfo structure)
+; 4 	0x4 	480 	Reserved, these bytes should never be used
+; 484 	0x1E4 	4 	    Another signature (must be 0x61417272)
+; 488 	0x1E8 	4 	    Contains the last known free cluster count on the volume. If the value is 0xFFFFFFFF, then the free count is unknown and must be computed. 
+;                       However, this value might be incorrect and should at least be range checked (<= volume cluster count)
+;
+; 492 	0x1EC 	4 	    Indicates the cluster number at which the filesystem driver should start looking for available clusters. 
+;                       If the value is 0xFFFFFFFF, then there is no hint and the driver should start searching at 2. 
+;                       Typically this value is set to the last allocated cluster number. As the previous field, this value should be range checked.
+;
+; 496 	0x1F0 	12 	    Reserved
+; 508 	0x1FC 	4 	    Trail signature (0xAA550000)
+
+struc FAT32_FSInfo_t
+    .head_sig_dword         resd 1          ; 0x41615252
+    .reserved1              resb 480        ; fill zero
+    .body_sig_dword         resd 1          ; 0x61417272
+    .free_count_dword       resd 1
+    .next_free_dword        resd 1
+    .reserved2              resb 12         ; fill zero
+    .tail_sig_dword         resd 1          ; 0xAA550000
+endstruc
+
 struc FAT32_SFN_t
-    .label                resb 11
-    .attributes_8       resb 1
-    .nt_res_8           resb 1
-    .csec_8             resb 1
-    .ctime_16           resb 2
-    .cdate_16           resb 2
-    .adate_16           resb 2
-    .cluster_16_high    resb 2
-    .mtime_16           resb 2
-    .mdate_16           resb 2
-    .cluster_16_low     resb 2
-    .size_32            resb 4
+    .label_83               resb 11
+    .attributes_byte        resb 1
+    .nt_res_byte            resb 1
+    .csec_byte              resb 1
+    .ctime_word             resb 2
+    .cdate_word             resb 2
+    .adate_word             resb 2
+    .cluster_16_high        resb 2
+    .mtime_word             resb 2
+    .mdate_word             resb 2
+    .cluster_16_low         resb 2
+    .size_dword             resb 4
 endstruc
 
 ; ## Long file name (LFN) structure format ##
@@ -166,50 +190,23 @@ endstruc
 ; Max of 20 in sequence == 0x14
 
 struc FAT32_LFN_t
-    .order        resb 1
-    .lfn_first5   resb 10
-    .attributes_8 resb 1
-    .zero1        resb 1
-    .checksum     resb 1
-    .lfn_next6    resb 12
-    .zero2        resb 2
-    .lfn_last2    resb 4
+    .order                  resb 1
+    .lfn_first5             resb 10
+    .attributes_8           resb 1
+    .zero1                  resb 1
+    .checksum               resb 1
+    .lfn_next6              resb 12
+    .zero2                  resb 2
+    .lfn_last2              resb 4
 endstruc
-
-; FSInfo 
-; 0 	0x0 	4 	    Lead signature (must be 0x41615252 to indicate a valid FSInfo structure)
-; 4 	0x4 	480 	Reserved, these bytes should never be used
-; 484 	0x1E4 	4 	    Another signature (must be 0x61417272)
-; 488 	0x1E8 	4 	    Contains the last known free cluster count on the volume. If the value is 0xFFFFFFFF, then the free count is unknown and must be computed. 
-;                       However, this value might be incorrect and should at least be range checked (<= volume cluster count)
-;
-; 492 	0x1EC 	4 	    Indicates the cluster number at which the filesystem driver should start looking for available clusters. 
-;                       If the value is 0xFFFFFFFF, then there is no hint and the driver should start searching at 2. 
-;                       Typically this value is set to the last allocated cluster number. As the previous field, this value should be range checked.
-;
-; 496 	0x1F0 	12 	    Reserved
-; 508 	0x1FC 	4 	    Trail signature (0xAA550000)
-
-struc FAT32_FSInfo_t
-    .head_signature_32         resd 1
-    .reserved1                 resb 480
-    .body_signature_32         resd 1
-    .free_cluster_count_32     resd 1
-    .first_avail_cluster_32    resd 1
-    .reserved2                 resd 3
-    .tail_signature_32         resd 1
-endstruc
-
 
 ; 32 bytes
 struc FAT32_State_t
-    .first_root_dir_sector_32 resd 1
     .first_data_sector_32     resd 1
     .first_fat_sector_32      resd 1
     .fat_size_32              resd 1
-    .active_cluster_32        resd 1
-    .active_FAT_cluster_32    resd 1
-    .active_dir_cluster_32    resd 1
+    .curr_FAT_cluster_32      resd 1
+    .curr_dir_cluster_32      resd 1
     .active_drive_lba_32      resd 1
 endstruc
 
