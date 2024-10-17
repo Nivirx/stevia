@@ -191,7 +191,7 @@ main:
     pop dword eax
     push dword eax      ; print Cluster of boot file
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    print_string NewLine_info
+    add sp, 0x4
 
     ; TODO: using first cluster information, start loading the kernel to memory
     ; TODO: going to need an elf parser,  some unreal mode file buffer functions to move the data
@@ -374,24 +374,18 @@ begin_data:
 ; Strings
 ;
 ; #############
+%define CRLF 0Dh, 0Ah
 
 %macro define_cstr 2
     ALIGN 16
     %1_cstr:
         db %2, 00h
-    %define str_len %strlen(%2)       ; string
-    %1_cstr_len:
-        dw str_len
 %endmacro
 
-; TODO: technically this is a cstr but it splices a return and newline on the end
-; TODO: this probably should be seperated out and the printing functionality should
-; TODO: place that newline and return
 %macro define_info 2
-%define CRLF_NUL 0Dh, 0Ah, 00h
     ALIGN 16
     %1_info:
-        db %2, CRLF_NUL
+        db %2, CRLF_NUL, 00h
 %endmacro
 
 define_info HelloPrompt, "Hello from Stevia Stage2!"
@@ -405,7 +399,6 @@ define_info SearchFATDIR, "Searching FAT DIR for bootable file..."
 define_info NextFATCluster, "Attempting to find next FAT cluster..."
 define_info ReadFATCluster, "Attempting to load next FAT"
 define_info MaybeFound_Boot, "Maybe found a file...checking..."
-define_info NewLine, ""
 
 define_cstr BootTarget, "BOOT    BIN"
 
