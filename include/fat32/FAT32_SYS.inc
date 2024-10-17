@@ -85,7 +85,7 @@ InitFATDriver:
 .error:
     ERROR STAGE2_FAT32_INIT_CF
 
-ALIGN4, db 0x90
+ALIGN 4, db 0x90
 FSInfoPrinter:
     __CDECL16_ENTRY
 .func:
@@ -138,7 +138,7 @@ SearchFATDIR:
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
-        je SearchFATDIR.bad_cluster
+        ;je SearchFATDIR.bad_cluster
         jb SearchFATDIR.load_next_dir_next_OK
         ERROR STAGE2_FAT32_END_OF_CHAIN
 
@@ -237,7 +237,7 @@ NextCluster:
     shr edx, 16
 
     xchg si, di         ; switch to fat32_bpb in si
-    mov cx, word [si + FAT32_bpb_t.bytes_per_sector_16]
+    mov cx, word [si + FAT32_bpb_t.bytes_per_sector_word]
     xchg si, di
 
     cmp edx, 0
@@ -311,7 +311,7 @@ ClusterToLBA:
 .func:
     mov dword eax, [bp + 4]
     sub eax, 2
-    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_8]
+    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_byte]
     mul edx
     jc ClusterToLBA.error
     add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
