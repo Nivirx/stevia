@@ -385,7 +385,7 @@ begin_data:
 %macro define_info 2
     ALIGN 16
     %1_info:
-        db %2, CRLF_NUL, 00h
+        db %2, CRLF, 00h
 %endmacro
 
 define_info HelloPrompt, "Hello from Stevia Stage2!"
