@@ -107,6 +107,8 @@ read_disk_raw:
     movzx ax, byte [bp + 4]
     mov word [bx + LBAPkt_t.segment], ax
 
+    xor ax, ax
+    xor dx, dx
     mov si, bx                  ; ds:si LBAPkt_t
     mov ah, 0x42                ; call #
     mov dl, byte [bp + 14]      ; drive #             
