@@ -63,20 +63,20 @@
 ;                           resulting in a value which does not fit in the Number of Sectors entry at 0x13. 
 
 struc FAT32_bpb_t
-    .reserved_init             resb 3
-    .ident_8                   resb 8
-    .bytes_per_sector_16       resb 2
-    .sectors_per_cluster_8     resb 1
-    .reserved_sectors_16       resb 2
-    .fat_count_8               resb 1
-    .dir_entry_count_16        resb 2
-    .sector_count_16           resb 2
-    .media_desc_8              resb 1
-    .sectors_per_fat_16        resb 2
-    .sectors_per_track_16      resb 2
-    .head_count_16             resb 2
-    .hidden_sectors_32         resb 4
-    .sector_count_32           resb 4
+    .reserved_jmpboot               resb 3
+    .ident                          resb 8
+    .bytes_per_sector_word          resb 2
+    .sectors_per_cluster_byte       resb 1
+    .reserved_sectors_word          resb 2
+    .fat_count_byte                 resb 1
+    .unused1_ZERO_word              resb 2      ; Root entry count field, 0 on fat32
+    .unused2_ZERO_word              resb 2      ; total sectors size 16, 0 on fat32
+    .media_desc_byte                resb 1
+    .unused3_ZERO_word              resb 2      ; FAT size 16, 0 on fat32
+    .sectors_per_track_word         resb 2
+    .head_count_word                resb 2
+    .hidden_sectors_dword           resb 4
+    .total_sectors_dword            resb 4
 endstruc
 
 ; EBPB Information (FAT32)
@@ -96,19 +96,19 @@ endstruc
 ;   8 	System identifier string. Always "FAT32   ". The spec says never to trust the contents of this string for any use.
 
 struc FAT32_ebpb_t
-    .sectors_per_fat_32        resb 4
-    .fat32_flags_16            resb 2
-    .fat32_version_16          resb 2
-    .root_dir_cluster_32       resb 4
-    .fsinfo_sector_16          resb 2
-    .backup_boot_sector_16     resb 2
-    .reserved1                 resb 12
-    .drive_number_8            resb 1
-    .nt_flags_8                resb 1
-    .signature_8               resb 1
-    .volume_serial_32          resb 4
-    .volume_label              resb 11
-    .system_ident              resb 8
+    .FATSz_dword                resb 4
+    .extflags_word              resb 2
+    .FSVersion_word             resb 2
+    .root_clus_dword            resb 4
+    .FSInfo_word                resb 2
+    .BkBootSec_word             resb 2
+    .reserved1                  resb 12
+    .drive_number_byte          resb 1
+    .nt_flags_byte              resb 1
+    .signature_byte             resb 1
+    .volume_id_dword            resb 4
+    .volume_label_bytea         resb 11
+    .system_ident_bytea         resb 8
 endstruc
 
 ; ## Standard 8.3 structure ###

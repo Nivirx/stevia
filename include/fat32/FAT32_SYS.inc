@@ -76,6 +76,22 @@ InitFATDriver:
 .error:
     ERROR STAGE2_FAT32_INIT_CF
 
+ALIGN4, db 0x90
+FSInfoPrinter:
+    __CDECL16_ENTRY
+.func:
+    ;info we want to print to validate we are loading stuff from the disk correctly
+    ; BPB Info
+    ; BS_OEMName = ident_8
+    ; BPB_BytsPerSec = bytes_per_sector_16
+    ; BPB_SecPerClus = sectors_per_cluster_8
+    ;
+.endp:
+    __CDECL16_EXIT
+    ret
+.error:
+    ERROR STAGE2_ERROR_INFOPRINTER
+
 ; this involves using the low memory buffer for the bios call and moving the file sector by sector to high memory
 ;
 ; SFN is a 8.3 file name, all uppercase, and padded with spaces

@@ -63,7 +63,7 @@
 %define STAGE2_FAT32_NCLUS_CFDIVZ    'K'
 %define STAGE2_FAT32_CLS2LBA_CF      'L'
 %define STAGE2_FAT32_INIT_CF         'M'
-%define STAGE2_ERROR_RESERVED_N      'N'
+%define STAGE2_ERROR_INFOPRINTER     'N'
 %define STAGE2_ERROR_RESERVED_O      'O'
 %define STAGE2_ERROR_RESERVED_P      'P'
 %define STAGE2_ERROR_RESERVED_Q      'Q'
