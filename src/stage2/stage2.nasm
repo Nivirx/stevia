@@ -135,8 +135,8 @@ main:
 
     mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
     mov word [bp - 4], si               ; partition_offset
-    mov word [bp - 6], bx               ; partition_table
-    mov word [bp - 8], dx               ; fat32_bpb
+    mov word [bp - 6], bx               ; partition_table_vbr
+    mov word [bp - 8], dx               ; fat32_bpb_vbr
 .check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -163,35 +163,35 @@ main:
 
     call SetTextMode
     call disable_cursor
-    print_string HelloPrompt_cstr
+    print_string HelloPrompt_info
     
     ; enable A20 gate
     call EnableA20
-    print_string A20_Enabled_OK_cstr
+    print_string A20_Enabled_OK_info
 
     ; enter unreal mode
     call EnterUnrealMode
-    print_string UnrealMode_OK_cstr
+    print_string UnrealMode_OK_info
 
     ; get system memory map
     call GetMemoryMap
-    print_string MemoryMap_OK_cstr
+    print_string MemoryMap_OK_info
 
     ; FAT Driver setup
     call InitFATDriver
-    print_string InitFATSYS_OK_cstr
+    print_string InitFATSYS_OK_info
 
     ;
     ; Find first cluster of bootable file
     call SearchFATDIR
     push dword eax      ; save first cluster of bootable file
 
-    print_string FileFound_OK_cstr
+    print_string FileFound_OK_info
     
     pop dword eax
     push dword eax      ; print Cluster of boot file
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    print_string NewLine_cstr
+    print_string NewLine_info
 
     ; TODO: using first cluster information, start loading the kernel to memory
     ; TODO: going to need an elf parser,  some unreal mode file buffer functions to move the data
@@ -261,7 +261,7 @@ ALIGN 4, db 0x90
 PrintDWORD:
     __CDECL16_ENTRY
 .func: 
-    lea si, [IntToHex_table]
+    mov si, IntToHex_table
     mov ebx, 16     ; base-16
 
     mov eax, dword [bp + 4]     ;val
@@ -375,39 +375,43 @@ begin_data:
 ;
 ; #############
 
-%macro define_str 2
+%macro define_cstr 2
     ALIGN 16
-    %1_str:
-        db %2
+    %1_cstr:
+        db %2, 00h
     %define str_len %strlen(%2)       ; string
-    %1_str_len:
-        dd str_len
+    %1_cstr_len:
+        dw str_len
 %endmacro
 
 ; TODO: technically this is a cstr but it splices a return and newline on the end
 ; TODO: this probably should be seperated out and the printing functionality should
 ; TODO: place that newline and return
-%macro define_cstr 2
+%macro define_info 2
 %define CRLF_NUL 0Dh, 0Ah, 00h
     ALIGN 16
-    %1_cstr:
+    %1_info:
         db %2, CRLF_NUL
 %endmacro
 
-define_cstr HelloPrompt, "Hello from Stevia Stage2!"
-define_cstr A20_Enabled_OK, "A20 Enabled OK"
-define_cstr MemoryMap_OK, "Memory map OK"
-define_cstr UnrealMode_OK, "Unreal mode OK"
-define_cstr FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
-define_cstr InitFATSYS_OK, "FAT32 Driver Init..."
+define_info HelloPrompt, "Hello from Stevia Stage2!"
+define_info A20_Enabled_OK, "A20 Enabled OK"
+define_info MemoryMap_OK, "Memory map OK"
+define_info UnrealMode_OK, "Unreal mode OK"
+define_info FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
+define_info InitFATSYS_OK, "FAT32 Driver Init..."
 
-define_cstr SearchFATDIR_INFO, "Searching FAT DIR for bootable file..."
-define_cstr NextFATCluster_INFO, "Attempting to find next FAT cluster..."
-define_cstr ReadFATCluster_INFO, "Attempting to load next FAT"
-define_cstr MaybeFound_Boot_INFO, "Maybe found a file...checking..."
-define_cstr NewLine, ""
+define_info SearchFATDIR, "Searching FAT DIR for bootable file..."
+define_info NextFATCluster, "Attempting to find next FAT cluster..."
+define_info ReadFATCluster, "Attempting to load next FAT"
+define_info MaybeFound_Boot, "Maybe found a file...checking..."
+define_info NewLine, ""
 
-define_str BootTarget, "BOOT    BIN"
+define_cstr BootTarget, "BOOT    BIN"
+
+ALIGN 16, db 0
+BootTarget_str:
+    db 'BOOT    BIN'
 
 ALIGN 16
 IntToHex_table:

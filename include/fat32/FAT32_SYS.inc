@@ -74,7 +74,7 @@ InitFATDriver:
     mov edx, dword [di + FAT32_State_t.first_fat_sector_32]
     add eax, edx
     jc InitFATDriver.error
-    
+
     mov dword [di + FAT32_State_t.first_data_sector_32], eax
 .set_first_dir:
     mov eax, dword [bx + FAT32_ebpb_t.root_clus_dword]
@@ -114,8 +114,7 @@ ALIGN 4, db 0x90
 SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
-    print_string SearchFATDIR_INFO_cstr
-
+    print_string SearchFATDIR_info
     .load_first_dir:
         mov eax, dword [fat32_state + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
@@ -183,7 +182,7 @@ SearchFATDIR:
         jmp SearchFATDIR.empty_dir_entry
 
     .parse_dir:
-        print_string MaybeFound_Boot_INFO_cstr
+        print_string MaybeFound_Boot_info
         .lfn_check:
             ; check for ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID  (0x0F) in offset 11
             ; TODO: going to skip LFN for now, since all valid volumes will have SFN's
@@ -219,7 +218,7 @@ ALIGN 4, db 0x90
 NextCluster:
     __CDECL16_ENTRY
 .func:
-    print_string NextFATCluster_INFO_cstr
+    print_string NextFATCluster_info
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
     mov di, fat32_bpb                            ; load si & di then use xchg
@@ -329,7 +328,7 @@ ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
-    print_string ReadFATCluster_INFO_cstr
+    print_string ReadFATCluster_info
 
     mov bx, word [boot_drive_ptr]
     movzx ax, byte [ds:bx]
