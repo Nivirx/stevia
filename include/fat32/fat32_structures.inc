@@ -207,7 +207,7 @@ struc FAT32_State_t
     .fat_size_32              resd 1
     .curr_FAT_cluster_32      resd 1
     .curr_dir_cluster_32      resd 1
-    .active_drive_lba_32      resd 1
+    .curr_drive_lba_32        resd 1
 endstruc
 
 ; 16 bytes
