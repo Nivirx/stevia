@@ -21,18 +21,18 @@
 %ifndef __INC_KMEM_FUNC
 %include 'cdecl16.inc'
 
-; uint8_t* kmemset_byte(void* dst, uint8_t val, uint16_t len);
+; void* kmemset_byte(void* dst, uint8_t val, uint16_t len);
 ALIGN 4, db 0x90
 kmemset:
     __CDECL16_ENTRY
  .func:
-    mov     cx, [bp + 8]   ; size_t len
-    mov     al, [bp + 6]   ; uint8_t val
-    mov     di, [bp + 4]   ; void * dst
+    mov     cx, [bp + 8]        ; uint16_t len
+    mov     al, byte [bp + 6]   ; uint8_t val
+    mov     di, [bp + 4]        ; void * dst
 
     cld
     rep     stosb
-    mov     ax, di         ; return pointer to dest
+    mov     ax, di         ; return pointer to dest + len (last elem of dest)
 .endp:
     __CDECL16_EXIT
     ret

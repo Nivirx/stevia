@@ -98,13 +98,16 @@ read_disk_raw:
     mov ax, [bp + 12]
     mov word [bx + LBAPkt_t.xfer_size], ax
 
-    mov eax, [bp + 8]
+    mov eax, dword [bp + 8]
     mov dword [bx + LBAPkt_t.lower_lba], eax
+
+    ; upper_lba is zero from kmemset
+    ; TODO: possiblly support >32bit LBA addresses in the future, this limits us to 4GiB
 
     mov ax, [bp + 6]
     mov word [bx + LBAPkt_t.offset], ax
 
-    movzx ax, byte [bp + 4]
+    mov ax, [bp + 4]
     mov word [bx + LBAPkt_t.segment], ax
 
     xor ax, ax
