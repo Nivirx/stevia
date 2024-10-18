@@ -55,3 +55,17 @@
     pop ax
 %endmacro
 %endif
+
+%ifnmacro __FASTCALL16_ENTRY
+%macro __FASTCALL16_ENTRY 0
+    push bp
+    mov bp, sp
+%endmacro
+%endif
+
+%ifnmacro __FASTCALL16_EXIT
+%macro __FASTCALL16_EXIT 0
+    mov sp, bp
+    pop bp
+%endmacro
+%endif
