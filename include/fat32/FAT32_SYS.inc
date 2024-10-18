@@ -40,8 +40,7 @@ InitFATDriver:
     sub sp, 0x6
 
 .calc_active_part:
-    mov bx, [partition_offset_ptr]
-    mov cx, word [ds:bx]                     
+    mov bx, [partition_offset]                     
     mov ax, partition_table
     add ax, cx
     mov si, ax                                  ; si = offset to active partition
@@ -222,44 +221,29 @@ NextCluster:
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
     mov di, fat32_bpb                            ; load si & di then use xchg
+    mov bx, fat32_state
 .calc_offset:
 ; fat_offset = active_cluster * 4
     mov eax, 4
     mul edx                                      
     jc NextCluster.error_cfdivz
     mov dword [si + FAT32_NextClusterData_t.fat_offset], eax        ; move lower 32 bits to fat offset
-
 .calc_fat_sector:
 ; fat_sector = first_fat_sector + (fat_offset / sector_size)
 ; entry_offset = fat_offset % sector_size
-    mov edx, 0xffff_0000
-    and edx, eax
-    shr edx, 16
-
-    xchg si, di         ; switch to fat32_bpb in si
-    mov cx, word [si + FAT32_bpb_t.bytes_per_sector_word]
-    xchg si, di
-
-    cmp edx, 0
+    xor edx, edx
+    movzx ecx, word [di + FAT32_bpb_t.bytes_per_sector_word]
+    cmp eax, 0
     je NextCluster.error_cfdivz
-    div cx              ; DX:AX / cx = fat_sector - first_fat_sector in AX
-                        ; DX = remainder (fat_offset mod sector_size)
-    
-    mov ecx, 0x0000_ffff
-    and edx, ecx
+    div ecx              ; eDX:eAX / eCX = fat_sector - first_fat_sector in eAX
+                        ; eDX = remainder (fat_offset mod sector_size)
+
     mov dword [si + FAT32_NextClusterData_t.entry_offset], edx
-
-    xchg si, di         ; switch to fat32_bpb in si
-    mov ecx, dword [si + FAT32_State_t.first_fat_sector_32]
-    xchg si, di
-
-    mov edx, 0x0000ffff
-    and eax, edx
+    mov ecx, dword [bx + FAT32_State_t.first_fat_sector_32]
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    mov ax, word [boot_drive]
     push ax
 
     mov ax, 0x1
@@ -304,20 +288,21 @@ NextCluster:
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
 
-; uint32_t ClusterToLBA(uint32_t cluster)
+; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
+; input = dword cluster in eax
 ALIGN 4, db 0x90
 ClusterToLBA:
-    __CDECL16_ENTRY
+    __FASTCALL16_ENTRY
 .func:
-    mov dword eax, [bp + 4]
     sub eax, 2
     movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_byte]
-    mul edx
+    mul edx         ; result in eax, error on carry 
     jc ClusterToLBA.error
     add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
+    jc ClusterToLBA.error
     ; eax contains the LBA now
 .endp:
-    __CDECL16_EXIT
+    __FASTCALL16_EXIT
     ret
 .error:
     ERROR STAGE2_FAT32_CLS2LBA_CF
@@ -330,24 +315,21 @@ ReadFATCluster:
 .func:
     print_string ReadFATCluster_info
 
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    mov ax, word [boot_drive]
     push ax
 
     mov ax, 0x1                         ; count = 1
     push ax
 
     mov eax, dword [bp + 8]
-    push dword eax
-    call ClusterToLBA
-    add sp, 0x4
+    call ClusterToLBA                   ; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
     ; eax contains the LBA now
     push dword eax                      ; lba = ClusterToLBA(..)
 
-    mov ax, fat_buffer                  ; offset = fat_buffer (in mem.inc)
+    mov ax, word [bp + 6]               ; offset
     push ax
 
-    xor ax, ax                          ; segment = 0x0000, our buffer is in the first 64 KiB
+    mov ax, word [bp + 4]
     push ax
 ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
 ;                         uint32_t lba,
