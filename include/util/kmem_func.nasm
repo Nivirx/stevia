@@ -37,7 +37,7 @@ kmemset:
     __CDECL16_EXIT
     ret
 
-; uint8_t* kmemset(uint8_t* dest, uint8_t* src, uint8_t len);
+; uint8_t* kmemset(uint16_t* dest, uint16_t* src, uint16_t len);
 ; not overlap safe
 ALIGN 4, db 0x90
 kmemcpy:
