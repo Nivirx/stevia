@@ -323,7 +323,6 @@ ReadFATCluster:
 
     mov eax, dword [bp + 8]
     call ClusterToLBA                   ; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
-    ; eax contains the LBA now
     push dword eax                      ; lba = ClusterToLBA(..)
 
     mov ax, word [bp + 6]               ; offset
@@ -331,9 +330,9 @@ ReadFATCluster:
 
     mov ax, word [bp + 4]
     push ax
-; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
-;                         uint32_t lba,
-;                         uint16_t count, uint16_t drive_num)
+    ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, 
+    ;                         uint32_t lba,
+    ;                         uint16_t count, uint16_t drive_num)
     call read_disk_raw  
     add sp, 0xC
 .endp:
