@@ -121,22 +121,14 @@ struc EarlyBootStruct_t
     .fat32_ebpb      resb FAT32_ebpb_t_size
 endstruc
 
-; bp - 2 : byte boot_drive
-; bp - 4 : word part_offset
-; bp - 6 : ptr PartTable_t partition_table
+; bp - 4 : ptr PartTable_t partition_table
 ; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
-    lea ax, [bp - 2]
-    mov [boot_drive_ptr], ax
-
-    lea ax, [bp - 4]
-    mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
-
-    mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
-    mov word [bp - 4], si               ; partition_offset
-    mov word [bp - 6], bx               ; partition_table_vbr
-    mov word [bp - 8], dx               ; fat32_bpb_vbr
+    mov byte [boot_drive], dl                              ; boot_drive (probably 0x80)
+    mov word [partition_offset], si                        ; partition_offset
+    mov word [bp - 4], bx                                  ; partition_table_vbr
+    mov word [bp - 8], dx                                  ; fat32_bpb_vbr
 .check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -145,20 +137,20 @@ main:
 .stage2_main:
     mov ax, PartTable_t_size
     push ax
-    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, [bp - 4]                                    ; ptr partition_table
     push ax
     mov ax, partition_table                                  
     push ax
-    call kmemcpy                                       ; copy partition table data
+    call kmemcpy                                        ; copy partition table data
     add sp, 0x6
 
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)      ; size in byte
     push ax
     mov ax, [bp - 8]                                    
     push ax
-    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    mov ax, fat32_bpb                                   ; defined in memory.inc, destination
     push ax
-    call kmemcpy                                       ; copy bpb & ebpb to memory
+    call kmemcpy                                        ; copy bpb & ebpb to memory
     add sp, 0x6
 
     call SetTextMode
@@ -524,9 +516,12 @@ SteviaInfo:
 ;
 ; locals
 ;
-boot_drive_ptr:
-    resw 1
-partition_offset_ptr:
+ALIGN 4,resb 1
+boot_drive:
+    resb 1
+
+ALIGN 4,resb 1
+partition_offset:
     resw 1
 
 ;
