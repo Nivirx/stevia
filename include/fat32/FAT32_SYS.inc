@@ -114,8 +114,9 @@ SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
     print_string SearchFATDIR_info
+    mov bx, fat32_state
     .load_first_dir:
-        mov eax, dword [fat32_state + FAT32_State_t.curr_dir_cluster_32]
+        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
         mov ax, dir_buffer
         push ax                 ; offset
@@ -131,7 +132,7 @@ SearchFATDIR:
         ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
         ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
         
-        mov eax, dword [fat32_state + FAT32_State_t.curr_dir_cluster_32]
+        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax
         call NextCluster        ; uint32_t NextCluster(uint32_t active_cluster);
         add sp, 0x4
@@ -143,7 +144,7 @@ SearchFATDIR:
 
     .load_next_dir_next_OK:
         ; load 512 bytes of directory entries from data sector
-        mov eax, [fat32_state + FAT32_State_t.curr_dir_cluster_32]
+        mov eax, [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
 
         mov ax, dir_buffer    
@@ -180,6 +181,7 @@ SearchFATDIR:
         jae SearchFATDIR.load_next_dir
         jmp SearchFATDIR.empty_dir_entry
 
+    ; TODO: move this to a seperate string search function
     .parse_dir:
         print_string MaybeFound_Boot_info
         .lfn_check:
