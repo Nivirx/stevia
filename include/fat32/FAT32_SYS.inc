@@ -302,6 +302,7 @@ NextCluster:
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
 
+; clobbers eax, edx
 ; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
 ; input = dword cluster in eax
 ALIGN 4, db 0x90
