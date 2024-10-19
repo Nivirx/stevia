@@ -89,10 +89,12 @@ FSInfoPrinter:
     __CDECL16_ENTRY
 .func:
     ;info we want to print to validate we are loading stuff from the disk correctly
-    ; BPB Info
-    ; BS_OEMName = ident_8
-    ; BPB_BytsPerSec = bytes_per_sector_16
-    ; BPB_SecPerClus = sectors_per_cluster_8
+    ; boot_drive # (i.e 0x80)
+    ; active/bootable partition info (lba_start, lba_length, part_type)
+    ; BPB Info: BS_OEMName = ident_8, BPB_BytsPerSec = bytes_per_sector_16, BPB_SecPerClus = sectors_per_cluster_8
+    ; eBPB info: FATSz_dword, volid, vol label
+    ; 
+    ; print entire FAT32 state
     ;
 .endp:
     __CDECL16_EXIT
@@ -220,6 +222,16 @@ NextCluster:
     __CDECL16_ENTRY
 .func:
     print_string NextFATCluster_info
+
+    mov ax, FAT32_NextClusterData_t_size
+    push ax                     ; length
+    xor ax, ax
+    push ax                     ; init with zero
+    mov ax, fat32_nc_data
+    push ax                     ; address of structure
+    call kmemset
+    sub sp, 0x6
+
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
     mov di, fat32_bpb                            ; load si & di then use xchg
