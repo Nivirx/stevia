@@ -201,7 +201,7 @@ hcf:
 ALIGN 4, db 0x90
 PrintString:
     __CDECL16_ENTRY
-    mov di, [bp + 4]    ; first arg is char* 
+    mov di, [bp + 4]    ; first arg is char[] 
 .str_len:
     xor cx, cx         ; ECX = 0
     not cx             ; ECX = -1 == 0xFFFF
