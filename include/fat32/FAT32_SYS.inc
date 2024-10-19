@@ -257,7 +257,7 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    mov ax, word [boot_drive]
+    movzx ax, byte [boot_drive]
     push ax
 
     mov ax, 0x1
@@ -321,7 +321,6 @@ ClusterToLBA:
 .error:
     ERROR STAGE2_FAT32_CLS2LBA_CF
 
-; bp - 2 - byte boot_drive
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
 ReadFATCluster:
@@ -329,7 +328,7 @@ ReadFATCluster:
 .func:
     print_string ReadFATCluster_info
 
-    mov ax, word [boot_drive]
+    movzx ax, byte [boot_drive]
     push ax
 
     mov ax, 0x1                         ; count = 1
