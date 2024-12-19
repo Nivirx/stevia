@@ -234,7 +234,7 @@ NextCluster:
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
     xor ax, ax
-    mov al, boot_drive
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1
@@ -306,7 +306,7 @@ ReadFATCluster:
     print_string ReadFATCluster_INFO_cstr
 
     xor ax, ax
-    mov al, boot_drive
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1                         ; count = 1
