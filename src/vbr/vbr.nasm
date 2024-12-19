@@ -152,10 +152,10 @@ main:
     call read_disk_raw
     add sp, 0xC
 .enter_stage2:
-    mov dl, byte [bp - 2]               ; boot_drive
-    mov si, word [bp - 4]               ; part_offset
-    mov bx, partition_table
-    mov dx, fat32_bpb
+    mov dl, byte [bp - 2]               ; byte boot_drive
+    mov ax, word [bp - 4]               ; word part_offset
+    mov si, partition_table             ; ptr partition_table
+    mov di, fat32_bpb                   ; ptr fat32_bpb
     jmp word 0x0000:STAGE2_ENTRY
 
 ; ###############
