@@ -38,7 +38,7 @@ InitFATDriver:
     sub sp, 0x6
 
 .calc_active_part:
-    mov ax, word partition_offset            
+    mov ax, word [partition_offset]            
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
@@ -249,20 +249,6 @@ NextCluster:
 
     xor ax, ax
     push ax
-    ; BUG: something about this function causes this BIOS call to come back wrong
-    ; somehow the drive number is being read in wrong, but I can't find evidence of it being modified or writen
-    ; to memory incorrectly.
-    ; 00007109574i[BIOS  ] Booting from 0000:7c00
-    ; 00007123227i[CPU0  ] [7123227] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7123227
-    ; (0) [0x000000000502] 0000:0502 (unk. ctxt): cli                       ; fa
-    ; <bochs:2> c
-    ; 00007252963i[BIOS  ] int13_diskette: unsupported AH=42
-    ; 00007253071i[CPU0  ] [7253071] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7253071
-    ; (0) [0x00000000095c] 0000:095c (unk. ctxt): mov al, 0x47              ; b047
     call read_disk_raw  
     add sp, 0xC
     ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
