@@ -49,13 +49,17 @@
 section .text
 begin_text:
 ; dl = byte boot_drive
-; si = word part_offset (active partition offset)
-; bx = ptr PartTable_t partition_table
-; dx = ptr FAT32_bpb_t fat32_bpb
+; ax = word part_offset (active partition offset)
+; si = ptr PartTable_t partition_table
+; di = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
-    __BOCHS_MAGIC_DEBUG
     cli                               ; We do not want to be interrupted
+
+    mov [vbr_part_table_ptr], bx             ; pointer to partition_table
+    mov [vbr_fat32_bpb_ptr], dx              ; pointer to fat32_bpb
+    mov [boot_drive], dl                     ; copy boot_drive to globals
+    mov [partition_offset], ax               ; copy partition_offset to globals
 
     mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, excep es
     mov ds, ax                        ; *
@@ -81,7 +85,7 @@ init:
 
     mov sp, stack_top
     mov bp, sp
-    sub sp, 0x20
+    sub sp, 0x10
     push bp                           ; setup a somewhat normal stack frame, minus a ret ptr
 
     sti
@@ -121,22 +125,9 @@ struc EarlyBootStruct_t
     .fat32_ebpb      resb FAT32_ebpb_t_size
 endstruc
 
-; bp - 2 : byte boot_drive
-; bp - 4 : word part_offset
-; bp - 6 : ptr PartTable_t partition_table
-; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
-    lea ax, [bp - 2]
-    mov [boot_drive_ptr], ax
-
-    lea ax, [bp - 4]
-    mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
-
-    mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
-    mov word [bp - 4], si               ; partition_offset
-    mov word [bp - 6], bx               ; partition_table
-    mov word [bp - 8], dx               ; fat32_bpb
+    __BOCHS_MAGIC_DEBUG
 .check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -145,20 +136,20 @@ main:
 .stage2_main:
     mov ax, PartTable_t_size
     push ax
-    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, word [vbr_part_table_ptr]                       ; ptr partition_table
     push ax
     mov ax, partition_table                                  
     push ax
-    call kmemcpy                                       ; copy partition table data
+    call kmemcpy                                            ; copy partition table data
     add sp, 0x6
 
     mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
     push ax
-    mov ax, [bp - 8]                                    
+    mov ax, word [vbr_fat32_bpb_ptr]                                    
     push ax
-    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    mov ax, fat32_bpb                                       ; defined in memory.inc, destination
     push ax
-    call kmemcpy                                       ; copy bpb & ebpb to memory
+    call kmemcpy                                            ; copy bpb & ebpb to memory
     add sp, 0x6
 
     call SetTextMode
@@ -503,33 +494,44 @@ section .bss follows=.sign
 begin_bss:
 ; structures
 
-align 16, resb 1
+align 8, resb 1
 partition_table resb PartTable_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_bpb resb FAT32_bpb_t_size
 fat32_ebpb resb FAT32_ebpb_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_nc_data resb 16
 
-align 16, resb 1
+align 8, resb 1
 lba_packet resb LBAPkt_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_state:
     resb FAT32_State_t_size
 
-align 16, resb 1
+align 8, resb 1
 SteviaInfo:
     resd 4
 
 ;
-; locals
+; globals
 ;
-boot_drive_ptr:
+align 8, resb 1
+boot_drive:
+    resb 1
+
+align 8, resb 1
+partition_offset:
     resw 1
-partition_offset_ptr:
+
+align 8, resb 1
+vbr_fat32_bpb_ptr:
+    resw 1
+
+align 8, resb 1
+vbr_part_table_ptr:
     resw 1
 
 ;

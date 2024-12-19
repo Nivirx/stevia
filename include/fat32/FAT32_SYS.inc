@@ -38,8 +38,7 @@ InitFATDriver:
     sub sp, 0x6
 
 .calc_active_part:
-    mov bx, [partition_offset_ptr]
-    mov ax, word [ds:bx]                     
+    mov ax, word partition_offset            
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
@@ -114,7 +113,7 @@ SearchFATDIR:
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
-        je SearchFATDIR.bad_cluster
+        ;je SearchFATDIR.bad_cluster            ; TODO: Implement Bad cluster checks
         jb SearchFATDIR.load_next_dir_next_OK
         ERROR STAGE2_FAT32_END_OF_CHAIN
 
@@ -234,8 +233,8 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    xor ax, ax
+    mov al, boot_drive
     push ax
 
     mov ax, 0x1
@@ -306,8 +305,8 @@ ReadFATCluster:
 .func:
     print_string ReadFATCluster_INFO_cstr
 
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    xor ax, ax
+    mov al, boot_drive
     push ax
 
     mov ax, 0x1                         ; count = 1
