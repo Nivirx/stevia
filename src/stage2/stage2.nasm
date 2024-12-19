@@ -56,12 +56,13 @@ ALIGN 4, db 0x90
 init:
     cli                               ; We do not want to be interrupted
 
-    mov [vbr_part_table_ptr], bx             ; pointer to partition_table
-    mov [vbr_fat32_bpb_ptr], dx              ; pointer to fat32_bpb
+    ; these 4 are stored in the .data section and are effectivly const types
+    mov [vbr_part_table_ptr], si             ; pointer to partition_table
+    mov [vbr_fat32_bpb_ptr], di              ; pointer to fat32_bpb
     mov [boot_drive], dl                     ; copy boot_drive to globals
     mov [partition_offset], ax               ; copy partition_offset to globals
 
-    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, excep es
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
     mov fs, ax                        ; *
     mov gs, ax                        ; *
@@ -135,19 +136,19 @@ main:
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
     mov ax, PartTable_t_size
+    push ax                                                 ; len = PartTable_t_size
+    mov ax, word [vbr_part_table_ptr]                       ; src = ptr to vbr partition_table
     push ax
-    mov ax, word [vbr_part_table_ptr]                       ; ptr partition_table
+    mov ax, partition_table                                 ; dst
     push ax
-    mov ax, partition_table                                  
-    push ax
-    call kmemcpy                                            ; copy partition table data
+    call kmemcpy                                            ; copy partition table data to .data section in stage2
     add sp, 0x6
 
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)          ; len
     push ax
-    mov ax, word [vbr_fat32_bpb_ptr]                                    
+    mov ax, word [vbr_fat32_bpb_ptr]                        ; src            
     push ax
-    mov ax, fat32_bpb                                       ; defined in memory.inc, destination
+    mov ax, fat32_bpb                                       ; dst
     push ax
     call kmemcpy                                            ; copy bpb & ebpb to memory
     add sp, 0x6
@@ -160,13 +161,13 @@ main:
     call EnableA20
     print_string A20_Enabled_OK_cstr
 
-    ; enter unreal mode
-    call EnterUnrealMode
-    print_string UnrealMode_OK_cstr
-
     ; get system memory map
     call GetMemoryMap
     print_string MemoryMap_OK_cstr
+
+    ; enter unreal mode
+    call EnterUnrealMode
+    print_string UnrealMode_OK_cstr
 
     ; FAT Driver setup
     call InitFATDriver
@@ -400,6 +401,26 @@ define_cstr NewLine, ""
 
 define_str BootTarget, "BOOT    BIN"
 
+;
+; pre-bss init globals (generally const...but there are exceptions)
+;
+
+align 8, db 0x00
+boot_drive:
+    db 0x00
+
+align 8, db 0x00
+partition_offset:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_fat32_bpb_ptr:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_part_table_ptr:
+    dw 0x0000
+
 ALIGN 16
 IntToHex_table:
     db '0123456789ABCDEF'
@@ -514,25 +535,9 @@ fat32_state:
 align 8, resb 1
 SteviaInfo:
     resd 4
-
 ;
-; globals
+; post-bss init globals
 ;
-align 8, resb 1
-boot_drive:
-    resb 1
-
-align 8, resb 1
-partition_offset:
-    resw 1
-
-align 8, resb 1
-vbr_fat32_bpb_ptr:
-    resw 1
-
-align 8, resb 1
-vbr_part_table_ptr:
-    resw 1
 
 ;
 ; large continuous allocations
