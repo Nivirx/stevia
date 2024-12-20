@@ -41,19 +41,17 @@ InitFATDriver:
 
 .calc_active_part:
     mov ax, word [partition_offset]            
+    mov di, fat32_state
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
     mov bx, dx                                                           ; set bx, should point at our partition
 
     mov eax, dword [bx + PartEntry_t.lba_start]
-    mov dword [fat32_state + FAT32_State_t.curr_drive_lba_32], eax
+    mov dword [di + FAT32_State_t.curr_drive_lba_32], eax
 
-    mov ax, fat32_bpb
-    mov si, ax
-
-    mov ax, fat32_ebpb
-    mov bx, ax
+    mov si, fat32_bpb
+    mov bx, fat32_ebpb
 .calc_first_fat:
     movzx eax,  word [si + FAT32_bpb_t.reserved_sectors_word]        ; first fat from start of partition
     add   eax, dword [di + FAT32_State_t.curr_drive_lba_32]          ; calculate offset from start of drive
@@ -275,32 +273,15 @@ NextCluster:
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
 
-; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
-; input = dword cluster in eax
-ALIGN 4, db 0x90
-ClusterToLBA:
-    __FASTCALL16_ENTRY
-.func:
-    sub eax, 2
-    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_byte]
-    mul edx         ; result in eax, error on carry 
-    jc ClusterToLBA.error
-    add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
-    jc ClusterToLBA.error
-    ; eax contains the LBA now
-.endp:
-    __FASTCALL16_EXIT
-    ret
-.error:
-    ERROR STAGE2_FAT32_CLS2LBA_CF
-
-; bp - 2 - byte boot_drive
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
     print_string ReadFATCluster_info
+
+    mov bx, fat32_bpb
+    mov si, fat32_ebpb
 
     xor ax, ax
     mov al, byte [boot_drive]
@@ -309,8 +290,14 @@ ReadFATCluster:
     mov ax, 0x1                         ; count = 1
     push ax
 
-    mov eax, dword [bp + 8]
-    call ClusterToLBA                   ; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
+    mov eax, dword [bp + 8]             ; cluster
+    sub eax, 2
+    movzx edx, byte [bx + FAT32_bpb_t.sectors_per_cluster_byte]
+    mul edx                             ; result in eax, error on carry 
+    jc ReadFATCluster.error
+    add eax, dword [si + FAT32_State_t.first_data_sector_32]
+    jc ReadFATCluster.error
+    ; eax contains the LBA now
     push dword eax                      ; lba = ClusterToLBA(..)
 
     mov ax, word [bp + 6]               ; offset
@@ -326,6 +313,8 @@ ReadFATCluster:
 .endp:
     __CDECL16_EXIT
     ret
+.error:
+    ERROR STAGE2_FAT32_CLS2LBA_CF
 
 %endif
 %define __INC_FAT32_SYS
