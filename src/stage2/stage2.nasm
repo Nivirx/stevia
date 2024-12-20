@@ -49,15 +49,20 @@
 section .text
 begin_text:
 ; dl = byte boot_drive
-; si = word part_offset (active partition offset)
-; bx = ptr PartTable_t partition_table
-; dx = ptr FAT32_bpb_t fat32_bpb
+; ax = word part_offset (active partition offset)
+; si = ptr PartTable_t partition_table
+; di = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
-    __BOCHS_MAGIC_DEBUG
     cli                               ; We do not want to be interrupted
 
-    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, excep es
+    ; these 4 are stored in the .data section and are effectivly const types
+    mov [vbr_part_table_ptr], si             ; pointer to partition_table
+    mov [vbr_fat32_bpb_ptr], di              ; pointer to fat32_bpb
+    mov [boot_drive], dl                     ; copy boot_drive to globals
+    mov [partition_offset], ax               ; copy partition_offset to globals
+
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
     mov fs, ax                        ; *
     mov gs, ax                        ; *
@@ -81,7 +86,7 @@ init:
 
     mov sp, stack_top
     mov bp, sp
-    sub sp, 0x20
+    sub sp, 0x10
     push bp                           ; setup a somewhat normal stack frame, minus a ret ptr
 
     sti
@@ -121,14 +126,9 @@ struc EarlyBootStruct_t
     .fat32_ebpb      resb FAT32_ebpb_t_size
 endstruc
 
-; bp - 4 : ptr PartTable_t partition_table
-; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
-    mov byte [boot_drive], dl                              ; boot_drive (probably 0x80)
-    mov word [partition_offset], si                        ; partition_offset
-    mov word [bp - 4], bx                                  ; partition_table_vbr
-    mov word [bp - 8], dx                                  ; fat32_bpb_vbr
+    __BOCHS_MAGIC_DEBUG
 .check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -136,21 +136,21 @@ main:
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
     mov ax, PartTable_t_size
+    push ax                                                 ; len = PartTable_t_size
+    mov ax, word [vbr_part_table_ptr]                       ; src = ptr to vbr partition_table
     push ax
-    mov ax, [bp - 4]                                    ; ptr partition_table
+    mov ax, partition_table                                 ; dst
     push ax
-    mov ax, partition_table                                  
-    push ax
-    call kmemcpy                                        ; copy partition table data
+    call kmemcpy                                            ; copy partition table data to .data section in stage2
     add sp, 0x6
 
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)      ; size in byte
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)          ; len
     push ax
-    mov ax, [bp - 8]                                    
+    mov ax, word [vbr_fat32_bpb_ptr]                        ; src            
     push ax
-    mov ax, fat32_bpb                                   ; defined in memory.inc, destination
+    mov ax, fat32_bpb                                       ; dst
     push ax
-    call kmemcpy                                        ; copy bpb & ebpb to memory
+    call kmemcpy                                            ; copy bpb & ebpb to memory
     add sp, 0x6
 
     call SetTextMode
@@ -161,13 +161,15 @@ main:
     call EnableA20
     print_string A20_Enabled_OK_info
 
+    ; get system memory map
+    call GetMemoryMap
+    print_string MemoryMap_OK_info
+
     ; enter unreal mode
     call EnterUnrealMode
     print_string UnrealMode_OK_info
 
-    ; get system memory map
-    call GetMemoryMap
-    print_string MemoryMap_OK_info
+    
 
     ; FAT Driver setup
     call InitFATDriver
@@ -389,11 +391,51 @@ define_info NextFATCluster, "Attempting to find next FAT cluster..."
 define_info ReadFATCluster, "Attempting to load next FAT"
 define_info MaybeFound_Boot, "Maybe found a file...checking..."
 
-define_cstr BootTarget, "BOOT    BIN"
+define_cstr BootTarget_cstr, "BOOT    BIN"
 
 ALIGN 16, db 0
-BootTarget_str:
+BootTarget:
     db 'BOOT    BIN'
+
+;
+; pre-bss init globals (generally const...but there are exceptions)
+;
+
+align 8, db 0x00
+boot_drive:
+    db 0x00
+
+align 8, db 0x00
+partition_offset:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_fat32_bpb_ptr:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_part_table_ptr:
+    dw 0x0000
+
+;
+; pre-bss init globals (generally const...but there are exceptions)
+;
+
+align 8, db 0x00
+boot_drive:
+    db 0x00
+
+align 8, db 0x00
+partition_offset:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_fat32_bpb_ptr:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_part_table_ptr:
+    dw 0x0000
 
 ALIGN 16
 IntToHex_table:
@@ -489,37 +531,29 @@ section .bss follows=.sign
 begin_bss:
 ; structures
 
-align 16, resb 1
+align 8, resb 1
 partition_table resb PartTable_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_bpb resb FAT32_bpb_t_size
 fat32_ebpb resb FAT32_ebpb_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_nc_data resb 16
 
-align 16, resb 1
+align 8, resb 1
 lba_packet resb LBAPkt_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_state:
     resb FAT32_State_t_size
 
-align 16, resb 1
+align 8, resb 1
 SteviaInfo:
     resd 4
-
 ;
-; locals
+; post-bss init globals
 ;
-ALIGN 4,resb 1
-boot_drive:
-    resb 1
-
-ALIGN 4,resb 1
-partition_offset:
-    resw 1
 
 ;
 ; large continuous allocations
