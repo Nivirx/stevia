@@ -47,7 +47,7 @@ InitFATDriver:
     mov bx, dx                                                           ; set bx, should point at our partition
 
     mov eax, dword [bx + PartEntry_t.lba_start]
-    mov dword [fat32_state + FAT32_State_t.active_drive_lba_32], eax
+    mov dword [fat32_state + FAT32_State_t.curr_drive_lba_32], eax
 
     mov ax, fat32_bpb
     mov si, ax
@@ -193,7 +193,7 @@ SearchFATDIR:
 
             mov cx, 0xA                     ; max of 11 filename length of 11 characters
             ; si points to the start of the current directory entry
-            mov di, BootTarget_str          ; current memory location (8.3 name is at offset 0)
+            mov di, BootTarget          ; current memory location (8.3 name is at offset 0)
             repe cmpsb                      ; compare the strings
 
             pop di

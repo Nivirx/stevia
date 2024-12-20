@@ -169,8 +169,6 @@ main:
     call EnterUnrealMode
     print_string UnrealMode_OK_info
 
-    
-
     ; FAT Driver setup
     call InitFATDriver
     print_string InitFATSYS_OK_info
@@ -396,26 +394,6 @@ define_cstr BootTarget_cstr, "BOOT    BIN"
 ALIGN 16, db 0
 BootTarget:
     db 'BOOT    BIN'
-
-;
-; pre-bss init globals (generally const...but there are exceptions)
-;
-
-align 8, db 0x00
-boot_drive:
-    db 0x00
-
-align 8, db 0x00
-partition_offset:
-    dw 0x0000
-
-align 8, db 0x00
-vbr_fat32_bpb_ptr:
-    dw 0x0000
-
-align 8, db 0x00
-vbr_part_table_ptr:
-    dw 0x0000
 
 ;
 ; pre-bss init globals (generally const...but there are exceptions)
