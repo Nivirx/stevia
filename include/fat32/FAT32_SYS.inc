@@ -191,7 +191,7 @@ SearchFATDIR:
 
             mov cx, 0xA                     ; max of 11 filename length of 11 characters
             ; si points to the start of the current directory entry
-            mov di, BootTarget          ; current memory location (8.3 name is at offset 0)
+            mov di, BootTarget              ; current memory location (8.3 name is at offset 0)
             repe cmpsb                      ; compare the strings
 
             pop di
