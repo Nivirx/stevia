@@ -389,7 +389,7 @@ define_info NextFATCluster, "Attempting to find next FAT cluster..."
 define_info ReadFATCluster, "Attempting to load next FAT"
 define_info MaybeFound_Boot, "Maybe found a file...checking..."
 
-define_cstr BootTarget_cstr, "BOOT    BIN"
+define_cstr BootTarget, "BOOT    BIN"
 
 ALIGN 16, db 0
 BootTarget:
