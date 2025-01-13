@@ -170,7 +170,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
         sfdisk_path="/usr/local/opt/util-linux/sbin/sfdisk"
         if [ -e $mbr_file ] && [ -e $vbr_file ]; then
         # use hdiutil to attach our empty disk image
-        ld_path_raw=$(hdiutil attach -readwrite -imagekey diskimage-class=CRawDiskImage -nomount -blocksize 512 -noverify disk.img)
+        ld_path_raw=$(hdiutil attach -readwrite -imagekey diskimage-class=CRawDiskImage -nomount -blocksize 512 -noverify /tmp/disk.img)
         ld=$(echo $ld_path_raw | sed s:/dev/::)
         ld_path="/dev/$ld"
 
@@ -193,7 +193,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
         unset ld
         unset ld_path_raw
 
-        ld_path_raw=$(hdiutil attach -readwrite -imagekey diskimage-class=CRawDiskImage -nomount -blocksize 512 -noverify disk.img)
+        ld_path_raw=$(hdiutil attach -readwrite -imagekey diskimage-class=CRawDiskImage -nomount -blocksize 512 -noverify /tmp/disk.img)
         ld=$(echo $ld_path_raw | grep "FDisk_partition_scheme" | awk '{print $1}' | sed s:/dev/::)
         ld_path="/dev/$ld"
 

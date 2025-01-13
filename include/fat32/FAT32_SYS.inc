@@ -40,22 +40,18 @@ InitFATDriver:
     sub sp, 0x6
 
 .calc_active_part:
-    mov bx, [partition_offset]                     
-    mov ax, partition_table
-    add ax, cx
-    mov si, ax                                  ; si = offset to active partition
-    
-    mov ax, fat32_state
-    mov di, ax
+    mov ax, word [partition_offset]            
+    mov di, fat32_state
 
-    mov eax, dword [si + PartEntry_t.lba_start]
+    mov dx, partition_table
+    add dx, ax                                                           ; dx points to the partition that was booted from
+    mov bx, dx                                                           ; set bx, should point at our partition
+
+    mov eax, dword [bx + PartEntry_t.lba_start]
     mov dword [di + FAT32_State_t.curr_drive_lba_32], eax
 
-    mov ax, fat32_bpb
-    mov si, ax
-
-    mov ax, fat32_ebpb
-    mov bx, ax
+    mov si, fat32_bpb
+    mov bx, fat32_ebpb
 .calc_first_fat:
     movzx eax,  word [si + FAT32_bpb_t.reserved_sectors_word]        ; first fat from start of partition
     add   eax, dword [di + FAT32_State_t.curr_drive_lba_32]          ; calculate offset from start of drive
@@ -140,7 +136,7 @@ SearchFATDIR:
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
-        ;je SearchFATDIR.bad_cluster
+        ;je SearchFATDIR.bad_cluster            ; TODO: Implement Bad cluster checks
         jb SearchFATDIR.load_next_dir_next_OK
         ERROR STAGE2_FAT32_END_OF_CHAIN
 
@@ -197,7 +193,7 @@ SearchFATDIR:
 
             mov cx, 0xA                     ; max of 11 filename length of 11 characters
             ; si points to the start of the current directory entry
-            mov di, BootTarget_str          ; current memory location (8.3 name is at offset 0)
+            mov di, BootTarget              ; current memory location (8.3 name is at offset 0)
             repe cmpsb                      ; compare the strings
 
             pop di
@@ -257,7 +253,8 @@ NextCluster:
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    movzx ax, byte [boot_drive]
+    xor ax, ax
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1
@@ -272,20 +269,6 @@ NextCluster:
 
     xor ax, ax
     push ax
-    ; BUG: something about this function causes this BIOS call to come back wrong
-    ; somehow the drive number is being read in wrong, but I can't find evidence of it being modified or writen
-    ; to memory incorrectly.
-    ; 00007109574i[BIOS  ] Booting from 0000:7c00
-    ; 00007123227i[CPU0  ] [7123227] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7123227
-    ; (0) [0x000000000502] 0000:0502 (unk. ctxt): cli                       ; fa
-    ; <bochs:2> c
-    ; 00007252963i[BIOS  ] int13_diskette: unsupported AH=42
-    ; 00007253071i[CPU0  ] [7253071] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7253071
-    ; (0) [0x00000000095c] 0000:095c (unk. ctxt): mov al, 0x47              ; b047
     call read_disk_raw  
     add sp, 0xC
     ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
@@ -302,26 +285,6 @@ NextCluster:
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
 
-; clobbers eax, edx
-; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
-; input = dword cluster in eax
-ALIGN 4, db 0x90
-ClusterToLBA:
-    __FASTCALL16_ENTRY
-.func:
-    sub eax, 2
-    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_byte]
-    mul edx         ; result in eax, error on carry 
-    jc ClusterToLBA.error
-    add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
-    jc ClusterToLBA.error
-    ; eax contains the LBA now
-.endp:
-    __FASTCALL16_EXIT
-    ret
-.error:
-    ERROR STAGE2_FAT32_CLS2LBA_CF
-
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
 ReadFATCluster:
@@ -329,14 +292,24 @@ ReadFATCluster:
 .func:
     print_string ReadFATCluster_info
 
-    movzx ax, byte [boot_drive]
+    mov bx, fat32_bpb
+    mov si, fat32_ebpb
+
+    xor ax, ax
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1                         ; count = 1
     push ax
 
-    mov eax, dword [bp + 8]
-    call ClusterToLBA                   ; __fastcall16 uint32_t ClusterToLBA(uint32_t cluster)
+    mov eax, dword [bp + 8]             ; cluster
+    sub eax, 2
+    movzx edx, byte [bx + FAT32_bpb_t.sectors_per_cluster_byte]
+    mul edx                             ; result in eax, error on carry 
+    jc ReadFATCluster.error
+    add eax, dword [si + FAT32_State_t.first_data_sector_32]
+    jc ReadFATCluster.error
+    ; eax contains the LBA now
     push dword eax                      ; lba = ClusterToLBA(..)
 
     mov ax, word [bp + 6]               ; offset
@@ -352,6 +325,8 @@ ReadFATCluster:
 .endp:
     __CDECL16_EXIT
     ret
+.error:
+    ERROR STAGE2_FAT32_CLS2LBA_CF
 
 %endif
 %define __INC_FAT32_SYS
