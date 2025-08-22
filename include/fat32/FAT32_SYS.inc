@@ -1,22 +1,17 @@
-; Copyright (c) 2024 Elaina Claus
-;
-; Permission is hereby granted, free of charge, to any person obtaining a copy
-; of this software and associated documentation files (the "Software"), to deal
-; in the Software without restriction, including without limitation the rights
-; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-; copies of the Software, and to permit persons to whom the Software is
-; furnished to do so, subject to the following conditions:
-;
-; The above copyright notice and this permission notice shall be included in all
-; copies or substantial portions of the Software.
-;
-; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-; SOFTWARE.
+; Copyright (C) 2025 Elaina Claus
+; 
+;     This program is free software: you can redistribute it and/or modify
+;     it under the terms of the GNU General Public License as published by
+;     the Free Software Foundation, either version 3 of the License, or
+;     (at your option) any later version.
+; 
+;     This program is distributed in the hope that it will be useful,
+;     but WITHOUT ANY WARRANTY; without even the implied warranty of
+;     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;     GNU General Public License for more details.
+; 
+;     You should have received a copy of the GNU General Public License
+;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 %ifndef __INC_FAT32_SYS
 
@@ -24,6 +19,8 @@
 %include "fat32/bpb_offset_bx.inc"
 %include "fat32/fat32_structures.inc"
 
+; Clobbers: eax, edx
+; returns: none
 ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_ENTRY
@@ -38,43 +35,63 @@ InitFATDriver:
     sub sp, 0x6
 
 .calc_active_part:
-    mov bx, [partition_offset_ptr]
-    mov ax, word [ds:bx]                     
+    mov ax, word [partition_offset]            
+    mov di, fat32_state
 
     mov dx, partition_table
     add dx, ax                                                           ; dx points to the partition that was booted from
     mov bx, dx                                                           ; set bx, should point at our partition
 
     mov eax, dword [bx + PartEntry_t.lba_start]
-    mov dword [fat32_state + FAT32_State_t.active_drive_lba_32], eax
+    mov dword [di + FAT32_State_t.curr_drive_lba_32], eax
 
+    mov si, fat32_bpb
+    mov bx, fat32_ebpb
 .calc_first_fat:
-    movzx eax,  word [fat32_bpb + FAT32_bpb_t.reserved_sectors_16]        ; first fat from start of partition
-    add   eax, dword [fat32_state + FAT32_State_t.active_drive_lba_32]    ; calculate offset from start of drive
+    movzx eax,  word [si + FAT32_bpb_t.reserved_sectors_word]        ; first fat from start of partition
+    add   eax, dword [di + FAT32_State_t.curr_drive_lba_32]          ; calculate offset from start of drive
+    jc InitFATDriver.error
 
-    mov dword [fat32_state + FAT32_State_t.first_fat_sector_32], eax
+    mov dword [di + FAT32_State_t.first_fat_sector_32], eax
 .calc_total_fat:
-    mov ebx,  dword [fat32_ebpb + FAT32_ebpb_t.sectors_per_fat_32]
-    movzx eax, byte [fat32_bpb + FAT32_bpb_t.fat_count_8]
-    mul ebx                                                                ; result in EDX:EAX, CF set on > 32bit return value
+    mov edx,  dword [bx + FAT32_ebpb_t.FATSz_dword]
+    movzx eax, byte [si + FAT32_bpb_t.fat_count_byte]
+    mul edx                                                                ; result in EDX:EAX, CF set on > 32bit return value
     jc InitFATDriver.error                                                 ; as a catch for unhandled overflow, just error if value is greater than 32bits
 
-    mov dword [fat32_state + FAT32_State_t.fat_size_32], eax
+    mov dword [di + FAT32_State_t.fat_size_32], eax
 .calc_first_data:
-    mov edx, dword [fat32_state + FAT32_State_t.first_fat_sector_32]
+    mov edx, dword [di + FAT32_State_t.first_fat_sector_32]
     add eax, edx
+    jc InitFATDriver.error
 
-    mov dword [fat32_state + FAT32_State_t.first_data_sector_32], eax
-.get_first_root_dir:
-    mov eax, [fat32_ebpb + FAT32_ebpb_t.root_dir_cluster_32]
-    mov dword [fat32_state + FAT32_State_t.first_root_dir_sector_32], eax   ; this only works when 1 cluster = 1 sector
-    mov dword [fat32_state + FAT32_State_t.active_dir_cluster_32], eax
-
+    mov dword [di + FAT32_State_t.first_data_sector_32], eax
+.set_first_dir:
+    mov eax, dword [bx + FAT32_ebpb_t.root_clus_dword]
+    mov dword [di + FAT32_State_t.curr_dir_cluster_32], eax
 .endp:
     __CDECL16_EXIT
     ret
 .error:
     ERROR STAGE2_FAT32_INIT_CF
+
+ALIGN 4, db 0x90
+FSInfoPrinter:
+    __CDECL16_ENTRY
+.func:
+    ;info we want to print to validate we are loading stuff from the disk correctly
+    ; boot_drive # (i.e 0x80)
+    ; active/bootable partition info (lba_start, lba_length, part_type)
+    ; BPB Info: BS_OEMName = ident_8, BPB_BytsPerSec = bytes_per_sector_16, BPB_SecPerClus = sectors_per_cluster_8
+    ; eBPB info: FATSz_dword, volid, vol label
+    ; 
+    ; print entire FAT32 state
+    ;
+.endp:
+    __CDECL16_EXIT
+    ret
+.error:
+    ERROR STAGE2_ERROR_INFOPRINTER
 
 ; this involves using the low memory buffer for the bios call and moving the file sector by sector to high memory
 ;
@@ -89,10 +106,10 @@ ALIGN 4, db 0x90
 SearchFATDIR:
     __CDECL16_ENTRY
 .file_lookup:
-    print_string SearchFATDIR_INFO_cstr
-
+    print_string SearchFATDIR_info
+    mov bx, fat32_state
     .load_first_dir:
-        mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
         mov ax, dir_buffer
         push ax                 ; offset
@@ -108,19 +125,19 @@ SearchFATDIR:
         ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
         ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
         
-        mov eax, dword [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax
         call NextCluster        ; uint32_t NextCluster(uint32_t active_cluster);
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
-        je SearchFATDIR.bad_cluster
+        ;je SearchFATDIR.bad_cluster            ; TODO: Implement Bad cluster checks
         jb SearchFATDIR.load_next_dir_next_OK
         ERROR STAGE2_FAT32_END_OF_CHAIN
 
     .load_next_dir_next_OK:
         ; load 512 bytes of directory entries from data sector
-        mov eax, [fat32_state + FAT32_State_t.active_dir_cluster_32]
+        mov eax, [bx + FAT32_State_t.curr_dir_cluster_32]
         push dword eax          ; cluster
 
         mov ax, dir_buffer    
@@ -157,8 +174,9 @@ SearchFATDIR:
         jae SearchFATDIR.load_next_dir
         jmp SearchFATDIR.empty_dir_entry
 
+    ; TODO: move this to a seperate string search function
     .parse_dir:
-        print_string MaybeFound_Boot_INFO_cstr
+        print_string MaybeFound_Boot_info
         .lfn_check:
             ; check for ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID  (0x0F) in offset 11
             ; TODO: going to skip LFN for now, since all valid volumes will have SFN's
@@ -170,7 +188,7 @@ SearchFATDIR:
 
             mov cx, 0xA                     ; max of 11 filename length of 11 characters
             ; si points to the start of the current directory entry
-            mov di, BootTarget_str          ; current memory location (8.3 name is at offset 0)
+            mov di, BootTarget              ; current memory location (8.3 name is at offset 0)
             repe cmpsb                      ; compare the strings
 
             pop di
@@ -194,48 +212,44 @@ ALIGN 4, db 0x90
 NextCluster:
     __CDECL16_ENTRY
 .func:
-    print_string NextFATCluster_INFO_cstr
+    print_string NextFATCluster_info
+
+    mov ax, FAT32_NextClusterData_t_size
+    push ax                     ; length
+    xor ax, ax
+    push ax                     ; init with zero
+    mov ax, fat32_nc_data
+    push ax                     ; address of structure
+    call kmemset
+    sub sp, 0x6
+
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
     mov di, fat32_bpb                            ; load si & di then use xchg
+    mov bx, fat32_state
 .calc_offset:
 ; fat_offset = active_cluster * 4
     mov eax, 4
     mul edx                                      
     jc NextCluster.error_cfdivz
     mov dword [si + FAT32_NextClusterData_t.fat_offset], eax        ; move lower 32 bits to fat offset
-
 .calc_fat_sector:
 ; fat_sector = first_fat_sector + (fat_offset / sector_size)
 ; entry_offset = fat_offset % sector_size
-    mov edx, 0xffff_0000
-    and edx, eax
-    shr edx, 16
-
-    xchg si, di         ; switch to fat32_bpb in si
-    mov cx, word [si + FAT32_bpb_t.bytes_per_sector_16]
-    xchg si, di
-
-    cmp edx, 0
+    xor edx, edx
+    movzx ecx, word [di + FAT32_bpb_t.bytes_per_sector_word]
+    cmp eax, 0
     je NextCluster.error_cfdivz
-    div cx              ; DX:AX / cx = fat_sector - first_fat_sector in AX
-                        ; DX = remainder (fat_offset mod sector_size)
-    
-    mov ecx, 0x0000_ffff
-    and edx, ecx
+    div ecx              ; eDX:eAX / eCX = fat_sector - first_fat_sector in eAX
+                        ; eDX = remainder (fat_offset mod sector_size)
+
     mov dword [si + FAT32_NextClusterData_t.entry_offset], edx
-
-    xchg si, di         ; switch to fat32_bpb in si
-    mov ecx, dword [si + FAT32_State_t.first_fat_sector_32]
-    xchg si, di
-
-    mov edx, 0x0000ffff
-    and eax, edx
+    mov ecx, dword [bx + FAT32_State_t.first_fat_sector_32]
     add eax, ecx        ; fat_sector + first_fat_sector
     mov dword [si + FAT32_NextClusterData_t.fat_sector], eax
 .load_fat_table:
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    xor ax, ax
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1
@@ -250,20 +264,6 @@ NextCluster:
 
     xor ax, ax
     push ax
-    ; BUG: something about this function causes this BIOS call to come back wrong
-    ; somehow the drive number is being read in wrong, but I can't find evidence of it being modified or writen
-    ; to memory incorrectly.
-    ; 00007109574i[BIOS  ] Booting from 0000:7c00
-    ; 00007123227i[CPU0  ] [7123227] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7123227
-    ; (0) [0x000000000502] 0000:0502 (unk. ctxt): cli                       ; fa
-    ; <bochs:2> c
-    ; 00007252963i[BIOS  ] int13_diskette: unsupported AH=42
-    ; 00007253071i[CPU0  ] [7253071] Stopped on MAGIC BREAKPOINT
-    ; (0) Magic breakpoint
-    ; Next at t=7253071
-    ; (0) [0x00000000095c] 0000:095c (unk. ctxt): mov al, 0x47              ; b047
     call read_disk_raw  
     add sp, 0xC
     ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
@@ -280,59 +280,48 @@ NextCluster:
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
 
-; uint32_t ClusterToLBA(uint32_t cluster)
-ALIGN 4, db 0x90
-ClusterToLBA:
-    __CDECL16_ENTRY
-.func:
-    mov dword eax, [bp + 4]
-    sub eax, 2
-    movzx edx, byte [fat32_bpb + FAT32_bpb_t.sectors_per_cluster_8]
-    mul edx
-    jc ClusterToLBA.error
-    add eax, dword [fat32_state + FAT32_State_t.first_data_sector_32]
-    ; eax contains the LBA now
-.endp:
-    __CDECL16_EXIT
-    ret
-.error:
-    ERROR STAGE2_FAT32_CLS2LBA_CF
-
-; bp - 2 - byte boot_drive
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_ENTRY
 .func:
-    print_string ReadFATCluster_INFO_cstr
+    print_string ReadFATCluster_info
 
-    mov bx, word [boot_drive_ptr]
-    movzx ax, byte [ds:bx]
+    mov bx, fat32_bpb
+    mov si, fat32_ebpb
+
+    xor ax, ax
+    mov al, byte [boot_drive]
     push ax
 
     mov ax, 0x1                         ; count = 1
     push ax
 
-    mov eax, dword [bp + 8]
-    push dword eax
-    call ClusterToLBA
-    add sp, 0x4
+    mov eax, dword [bp + 8]             ; cluster
+    sub eax, 2
+    movzx edx, byte [bx + FAT32_bpb_t.sectors_per_cluster_byte]
+    mul edx                             ; result in eax, error on carry 
+    jc ReadFATCluster.error
+    add eax, dword [si + FAT32_State_t.first_data_sector_32]
+    jc ReadFATCluster.error
     ; eax contains the LBA now
     push dword eax                      ; lba = ClusterToLBA(..)
 
-    mov ax, fat_buffer                  ; offset = fat_buffer (in mem.inc)
+    mov ax, word [bp + 6]               ; offset
     push ax
 
-    xor ax, ax                          ; segment = 0x0000, our buffer is in the first 64 KiB
+    mov ax, word [bp + 4]
     push ax
-; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
-;                         uint32_t lba,
-;                         uint16_t count, uint16_t drive_num)
+    ; uint8_t read_disk_raw(uint16_t buf_segment, uint16_t buf_offset, 
+    ;                         uint32_t lba,
+    ;                         uint16_t count, uint16_t drive_num)
     call read_disk_raw  
     add sp, 0xC
 .endp:
     __CDECL16_EXIT
     ret
+.error:
+    ERROR STAGE2_FAT32_CLS2LBA_CF
 
 %endif
 %define __INC_FAT32_SYS

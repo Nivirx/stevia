@@ -1,22 +1,17 @@
-; Copyright (c) 2023 Elaina Claus
-;
-; Permission is hereby granted, free of charge, to any person obtaining a copy
-; of this software and associated documentation files (the "Software"), to deal
-; in the Software without restriction, including without limitation the rights
-; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-; copies of the Software, and to permit persons to whom the Software is
-; furnished to do so, subject to the following conditions:
-;
-; The above copyright notice and this permission notice shall be included in all
-; copies or substantial portions of the Software.
-;
-; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-; SOFTWARE.
+; Copyright (C) 2025 Elaina Claus
+; 
+;     This program is free software: you can redistribute it and/or modify
+;     it under the terms of the GNU General Public License as published by
+;     the Free Software Foundation, either version 3 of the License, or
+;     (at your option) any later version.
+; 
+;     This program is distributed in the hope that it will be useful,
+;     but WITHOUT ANY WARRANTY; without even the implied warranty of
+;     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;     GNU General Public License for more details.
+; 
+;     You should have received a copy of the GNU General Public License
+;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 %ifndef __INC_FAT32_STRUCT
 
@@ -63,20 +58,20 @@
 ;                           resulting in a value which does not fit in the Number of Sectors entry at 0x13. 
 
 struc FAT32_bpb_t
-    .reserved_init             resb 3
-    .ident_8                   resb 8
-    .bytes_per_sector_16       resb 2
-    .sectors_per_cluster_8     resb 1
-    .reserved_sectors_16       resb 2
-    .fat_count_8               resb 1
-    .dir_entry_count_16        resb 2
-    .sector_count_16           resb 2
-    .media_desc_8              resb 1
-    .sectors_per_fat_16        resb 2
-    .sectors_per_track_16      resb 2
-    .head_count_16             resb 2
-    .hidden_sectors_32         resb 4
-    .sector_count_32           resb 4
+    .reserved_jmpboot               resb 3
+    .ident                          resb 8
+    .bytes_per_sector_word          resb 2
+    .sectors_per_cluster_byte       resb 1
+    .reserved_sectors_word          resb 2
+    .fat_count_byte                 resb 1
+    .unused1_ZERO_word              resb 2      ; Root entry count field, 0 on fat32
+    .unused2_ZERO_word              resb 2      ; total sectors size 16, 0 on fat32
+    .media_desc_byte                resb 1
+    .unused3_ZERO_word              resb 2      ; FAT size 16, 0 on fat32
+    .sectors_per_track_word         resb 2
+    .head_count_word                resb 2
+    .hidden_sectors_dword           resb 4
+    .total_sectors_dword            resb 4
 endstruc
 
 ; EBPB Information (FAT32)
@@ -96,19 +91,19 @@ endstruc
 ;   8 	System identifier string. Always "FAT32   ". The spec says never to trust the contents of this string for any use.
 
 struc FAT32_ebpb_t
-    .sectors_per_fat_32        resb 4
-    .fat32_flags_16            resb 2
-    .fat32_version_16          resb 2
-    .root_dir_cluster_32       resb 4
-    .fsinfo_sector_16          resb 2
-    .backup_boot_sector_16     resb 2
-    .reserved1                 resb 12
-    .drive_number_8            resb 1
-    .nt_flags_8                resb 1
-    .signature_8               resb 1
-    .volume_serial_32          resb 4
-    .volume_label              resb 11
-    .system_ident              resb 8
+    .FATSz_dword                resb 4
+    .extflags_word              resb 2
+    .FSVersion_word             resb 2
+    .root_clus_dword            resb 4
+    .FSInfo_word                resb 2
+    .BkBootSec_word             resb 2
+    .reserved1                  resb 12
+    .drive_number_byte          resb 1
+    .nt_flags_byte              resb 1
+    .signature_byte             resb 1
+    .volume_id_dword            resb 4
+    .volume_label_bytea         resb 11
+    .system_ident_bytea         resb 8
 endstruc
 
 ; ## Standard 8.3 structure ###
@@ -134,19 +129,43 @@ endstruc
 ;   26              2                Low 16 bits of entry's first cluster
 ;   28              4                File size in bytes
 
+; FSInfo 
+; 0 	0x0 	4 	    Lead signature (must be 0x41615252 to indicate a valid FSInfo structure)
+; 4 	0x4 	480 	Reserved, these bytes should never be used
+; 484 	0x1E4 	4 	    Another signature (must be 0x61417272)
+; 488 	0x1E8 	4 	    Contains the last known free cluster count on the volume. If the value is 0xFFFFFFFF, then the free count is unknown and must be computed. 
+;                       However, this value might be incorrect and should at least be range checked (<= volume cluster count)
+;
+; 492 	0x1EC 	4 	    Indicates the cluster number at which the filesystem driver should start looking for available clusters. 
+;                       If the value is 0xFFFFFFFF, then there is no hint and the driver should start searching at 2. 
+;                       Typically this value is set to the last allocated cluster number. As the previous field, this value should be range checked.
+;
+; 496 	0x1F0 	12 	    Reserved
+; 508 	0x1FC 	4 	    Trail signature (0xAA550000)
+
+struc FAT32_FSInfo_t
+    .head_sig_dword         resd 1          ; 0x41615252
+    .reserved1              resb 480        ; fill zero
+    .body_sig_dword         resd 1          ; 0x61417272
+    .free_count_dword       resd 1
+    .next_free_dword        resd 1
+    .reserved2              resb 12         ; fill zero
+    .tail_sig_dword         resd 1          ; 0xAA550000
+endstruc
+
 struc FAT32_SFN_t
-    .label                resb 11
-    .attributes_8       resb 1
-    .nt_res_8           resb 1
-    .csec_8             resb 1
-    .ctime_16           resb 2
-    .cdate_16           resb 2
-    .adate_16           resb 2
-    .cluster_16_high    resb 2
-    .mtime_16           resb 2
-    .mdate_16           resb 2
-    .cluster_16_low     resb 2
-    .size_32            resb 4
+    .label_83               resb 11
+    .attributes_byte        resb 1
+    .nt_res_byte            resb 1
+    .csec_byte              resb 1
+    .ctime_word             resb 2
+    .cdate_word             resb 2
+    .adate_word             resb 2
+    .cluster_16_high        resb 2
+    .mtime_word             resb 2
+    .mdate_word             resb 2
+    .cluster_16_low         resb 2
+    .size_dword             resb 4
 endstruc
 
 ; ## Long file name (LFN) structure format ##
@@ -166,51 +185,24 @@ endstruc
 ; Max of 20 in sequence == 0x14
 
 struc FAT32_LFN_t
-    .order        resb 1
-    .lfn_first5   resb 10
-    .attributes_8 resb 1
-    .zero1        resb 1
-    .checksum     resb 1
-    .lfn_next6    resb 12
-    .zero2        resb 2
-    .lfn_last2    resb 4
+    .order                  resb 1
+    .lfn_first5             resb 10
+    .attributes_8           resb 1
+    .zero1                  resb 1
+    .checksum               resb 1
+    .lfn_next6              resb 12
+    .zero2                  resb 2
+    .lfn_last2              resb 4
 endstruc
-
-; FSInfo 
-; 0 	0x0 	4 	    Lead signature (must be 0x41615252 to indicate a valid FSInfo structure)
-; 4 	0x4 	480 	Reserved, these bytes should never be used
-; 484 	0x1E4 	4 	    Another signature (must be 0x61417272)
-; 488 	0x1E8 	4 	    Contains the last known free cluster count on the volume. If the value is 0xFFFFFFFF, then the free count is unknown and must be computed. 
-;                       However, this value might be incorrect and should at least be range checked (<= volume cluster count)
-;
-; 492 	0x1EC 	4 	    Indicates the cluster number at which the filesystem driver should start looking for available clusters. 
-;                       If the value is 0xFFFFFFFF, then there is no hint and the driver should start searching at 2. 
-;                       Typically this value is set to the last allocated cluster number. As the previous field, this value should be range checked.
-;
-; 496 	0x1F0 	12 	    Reserved
-; 508 	0x1FC 	4 	    Trail signature (0xAA550000)
-
-struc FAT32_FSInfo_t
-    .head_signature_32         resd 1
-    .reserved1                 resb 480
-    .body_signature_32         resd 1
-    .free_cluster_count_32     resd 1
-    .first_avail_cluster_32    resd 1
-    .reserved2                 resd 3
-    .tail_signature_32         resd 1
-endstruc
-
 
 ; 32 bytes
 struc FAT32_State_t
-    .first_root_dir_sector_32 resd 1
     .first_data_sector_32     resd 1
     .first_fat_sector_32      resd 1
     .fat_size_32              resd 1
-    .active_cluster_32        resd 1
-    .active_FAT_cluster_32    resd 1
-    .active_dir_cluster_32    resd 1
-    .active_drive_lba_32      resd 1
+    .curr_FAT_cluster_32      resd 1
+    .curr_dir_cluster_32      resd 1
+    .curr_drive_lba_32        resd 1
 endstruc
 
 ; 16 bytes

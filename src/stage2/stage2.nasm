@@ -1,22 +1,17 @@
-; Copyright (c) 2023 Elaina Claus
-;
-; Permission is hereby granted, free of charge, to any person obtaining a copy
-; of this software and associated documentation files (the "Software"), to deal
-; in the Software without restriction, including without limitation the rights
-; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-; copies of the Software, and to permit persons to whom the Software is
-; furnished to do so, subject to the following conditions:
-;
-; The above copyright notice and this permission notice shall be included in all
-; copies or substantial portions of the Software.
-;
-; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-; SOFTWARE.
+; Copyright (C) 2025 Elaina Claus
+; 
+;     This program is free software: you can redistribute it and/or modify
+;     it under the terms of the GNU General Public License as published by
+;     the Free Software Foundation, either version 3 of the License, or
+;     (at your option) any later version.
+; 
+;     This program is distributed in the hope that it will be useful,
+;     but WITHOUT ANY WARRANTY; without even the implied warranty of
+;     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;     GNU General Public License for more details.
+; 
+;     You should have received a copy of the GNU General Public License
+;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [BITS 16]
 [ORG 0x0500]                            ; IF YOU CHANGE ORG CHANGE THE SIGN OFFSET AT THE END
@@ -49,15 +44,20 @@
 section .text
 begin_text:
 ; dl = byte boot_drive
-; si = word part_offset (active partition offset)
-; bx = ptr PartTable_t partition_table
-; dx = ptr FAT32_bpb_t fat32_bpb
+; ax = word part_offset (active partition offset)
+; si = ptr PartTable_t partition_table
+; di = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
-    __BOCHS_MAGIC_DEBUG
     cli                               ; We do not want to be interrupted
 
-    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, excep es
+    ; these 4 are stored in the .data section and are effectivly const types
+    mov [vbr_part_table_ptr], si             ; pointer to partition_table
+    mov [vbr_fat32_bpb_ptr], di              ; pointer to fat32_bpb
+    mov [boot_drive], dl                     ; copy boot_drive to globals
+    mov [partition_offset], ax               ; copy partition_offset to globals
+
+    mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
     mov fs, ax                        ; *
     mov gs, ax                        ; *
@@ -81,7 +81,7 @@ init:
 
     mov sp, stack_top
     mov bp, sp
-    sub sp, 0x20
+    sub sp, 0x10
     push bp                           ; setup a somewhat normal stack frame, minus a ret ptr
 
     sti
@@ -121,22 +121,9 @@ struc EarlyBootStruct_t
     .fat32_ebpb      resb FAT32_ebpb_t_size
 endstruc
 
-; bp - 2 : byte boot_drive
-; bp - 4 : word part_offset
-; bp - 6 : ptr PartTable_t partition_table
-; bp - 8 : ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 main:
-    lea ax, [bp - 2]
-    mov [boot_drive_ptr], ax
-
-    lea ax, [bp - 4]
-    mov [partition_offset_ptr], ax      ; setup pointers to boot_drive and partition offset on stack
-
-    mov byte [bp - 2], dl               ; boot_drive (probably 0x80)
-    mov word [bp - 4], si               ; partition_offset
-    mov word [bp - 6], bx               ; partition_table
-    mov word [bp - 8], dx               ; fat32_bpb
+    __BOCHS_MAGIC_DEBUG
 .check_sig:
     mov eax, dword [STAGE2_SIG]
     cmp eax, 0xDEADBEEF
@@ -144,54 +131,54 @@ main:
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
     mov ax, PartTable_t_size
+    push ax                                                 ; len = PartTable_t_size
+    mov ax, word [vbr_part_table_ptr]                       ; src = ptr to vbr partition_table
     push ax
-    mov ax, [bp - 6]                                    ; ptr partition_table
+    mov ax, partition_table                                 ; dst
     push ax
-    mov ax, partition_table                                  
-    push ax
-    call kmemcpy                                       ; copy partition table data
+    call kmemcpy                                            ; copy partition table data to .data section in stage2
     add sp, 0x6
 
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)         ; size in byte
+    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)          ; len
     push ax
-    mov ax, [bp - 8]                                    
+    mov ax, word [vbr_fat32_bpb_ptr]                        ; src            
     push ax
-    mov ax, fat32_bpb                                  ; defined in memory.inc, destination
+    mov ax, fat32_bpb                                       ; dst
     push ax
-    call kmemcpy                                       ; copy bpb & ebpb to memory
+    call kmemcpy                                            ; copy bpb & ebpb to memory
     add sp, 0x6
 
     call SetTextMode
     call disable_cursor
-    print_string HelloPrompt_cstr
+    print_string HelloPrompt_info
     
     ; enable A20 gate
     call EnableA20
-    print_string A20_Enabled_OK_cstr
-
-    ; enter unreal mode
-    call EnterUnrealMode
-    print_string UnrealMode_OK_cstr
+    print_string A20_Enabled_OK_info
 
     ; get system memory map
     call GetMemoryMap
-    print_string MemoryMap_OK_cstr
+    print_string MemoryMap_OK_info
+
+    ; enter unreal mode
+    call EnterUnrealMode
+    print_string UnrealMode_OK_info
 
     ; FAT Driver setup
     call InitFATDriver
-    print_string InitFATSYS_OK_cstr
+    print_string InitFATSYS_OK_info
 
     ;
     ; Find first cluster of bootable file
     call SearchFATDIR
     push dword eax      ; save first cluster of bootable file
 
-    print_string FileFound_OK_cstr
+    print_string FileFound_OK_info
     
     pop dword eax
     push dword eax      ; print Cluster of boot file
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    print_string NewLine_cstr
+    add sp, 0x4
 
     ; TODO: using first cluster information, start loading the kernel to memory
     ; TODO: going to need an elf parser,  some unreal mode file buffer functions to move the data
@@ -209,7 +196,7 @@ hcf:
 ALIGN 4, db 0x90
 PrintString:
     __CDECL16_ENTRY
-    mov di, [bp + 4]    ; first arg is char* 
+    mov di, [bp + 4]    ; first arg is char[] 
 .str_len:
     xor cx, cx         ; ECX = 0
     not cx             ; ECX = -1 == 0xFFFF
@@ -243,10 +230,7 @@ ALIGN 4, db 0x90
 PrintCharacter:
     __CDECL16_ENTRY
 .func:
-    mov ax, [bp + 4] ; c
-    mov dx, 0x00ff
-    and ax, dx
-
+    movzx ax, byte [bp + 4]     ; AL = character c
     mov ah, 0x0E                ; INT 0x10, AH=0x0E call
     mov bx, 0x0007              ; BH = page no. BL =Text attribute 0x07 is lightgrey font on black background
     int 0x10                    ; call video interrupt
@@ -261,7 +245,7 @@ ALIGN 4, db 0x90
 PrintDWORD:
     __CDECL16_ENTRY
 .func: 
-    lea si, [IntToHex_table]
+    mov si, IntToHex_table
     mov ebx, 16     ; base-16
 
     mov eax, dword [bp + 4]     ;val
@@ -374,40 +358,57 @@ begin_data:
 ; Strings
 ;
 ; #############
+%define CRLF 0Dh, 0Ah
 
-%macro define_str 2
-    ALIGN 16
-    %1_str:
-        db %2
-    %define str_len %strlen(%2)       ; string
-    %1_str_len:
-        dd str_len
-%endmacro
-
-; TODO: technically this is a cstr but it splices a return and newline on the end
-; TODO: this probably should be seperated out and the printing functionality should
-; TODO: place that newline and return
 %macro define_cstr 2
-%define CRLF_NUL 0Dh, 0Ah, 00h
     ALIGN 16
     %1_cstr:
-        db %2, CRLF_NUL
+        db %2, 00h
 %endmacro
 
-define_cstr HelloPrompt, "Hello from Stevia Stage2!"
-define_cstr A20_Enabled_OK, "A20 Enabled OK"
-define_cstr MemoryMap_OK, "Memory map OK"
-define_cstr UnrealMode_OK, "Unreal mode OK"
-define_cstr FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
-define_cstr InitFATSYS_OK, "FAT32 Driver Init..."
+%macro define_info 2
+    ALIGN 16
+    %1_info:
+        db %2, CRLF, 00h
+%endmacro
 
-define_cstr SearchFATDIR_INFO, "Searching FAT DIR for bootable file..."
-define_cstr NextFATCluster_INFO, "Attempting to find next FAT cluster..."
-define_cstr ReadFATCluster_INFO, "Attempting to load next FAT"
-define_cstr MaybeFound_Boot_INFO, "Maybe found a file...checking..."
-define_cstr NewLine, ""
+define_info HelloPrompt, "Hello from Stevia Stage2!"
+define_info A20_Enabled_OK, "A20 Enabled OK"
+define_info MemoryMap_OK, "Memory map OK"
+define_info UnrealMode_OK, "Unreal mode OK"
+define_info FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
+define_info InitFATSYS_OK, "FAT32 Driver Init..."
 
-define_str BootTarget, "BOOT    BIN"
+define_info SearchFATDIR, "Searching FAT DIR for bootable file..."
+define_info NextFATCluster, "Attempting to find next FAT cluster..."
+define_info ReadFATCluster, "Attempting to load next FAT"
+define_info MaybeFound_Boot, "Maybe found a file...checking..."
+
+define_cstr BootTarget, "BOOT    BIN"
+
+ALIGN 16, db 0
+BootTarget:
+    db 'BOOT    BIN'
+
+;
+; pre-bss init globals (generally const...but there are exceptions)
+;
+
+align 8, db 0x00
+boot_drive:
+    db 0x00
+
+align 8, db 0x00
+partition_offset:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_fat32_bpb_ptr:
+    dw 0x0000
+
+align 8, db 0x00
+vbr_part_table_ptr:
+    dw 0x0000
 
 ALIGN 16
 IntToHex_table:
@@ -503,34 +504,29 @@ section .bss follows=.sign
 begin_bss:
 ; structures
 
-align 16, resb 1
+align 8, resb 1
 partition_table resb PartTable_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_bpb resb FAT32_bpb_t_size
 fat32_ebpb resb FAT32_ebpb_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_nc_data resb 16
 
-align 16, resb 1
+align 8, resb 1
 lba_packet resb LBAPkt_t_size
 
-align 16, resb 1
+align 8, resb 1
 fat32_state:
     resb FAT32_State_t_size
 
-align 16, resb 1
+align 8, resb 1
 SteviaInfo:
     resd 4
-
 ;
-; locals
+; post-bss init globals
 ;
-boot_drive_ptr:
-    resw 1
-partition_offset_ptr:
-    resw 1
 
 ;
 ; large continuous allocations
