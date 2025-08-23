@@ -61,7 +61,7 @@ cat > /tmp/pt.sfdisk <<EOF
 label: dos
 unit: sectors
 sector-size: $disk_sector_size
-label-id: 0xd0k1d0k1
+label-id: 0xa0b0c0d0
 
 start=$part_start, size=$((disk_sectors - part_start)), type=c, bootable
 EOF
