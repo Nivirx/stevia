@@ -22,7 +22,7 @@ jobs:
       - name: Ensure image is up to date and install build tools and deps
         run: |
           bash -c "apt update && apt upgrade -y"
-          apt install -y build-essential nasm mount fdisk dosfstools 
+          apt install -y build-essential nasm mtools fdisk dosfstools 
 
       - name: Build stevia
         run: make
@@ -34,7 +34,5 @@ jobs:
           name: stevia-${{ github.run_number }}
           path: |
             build/**
-            disk.img
-            disk.img.gz
           if-no-files-found: error
           retention-days: 30   # override server default if you like
