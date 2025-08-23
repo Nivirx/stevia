@@ -17,12 +17,12 @@ jobs:
 
       - name: Install CHTM apt cache endpoint into container
         run: |
-          echo 'Acquire::http::Proxy "http://chtm-aptcache-01.lan.chtm.me:3142";' | sudo tee /etc/apt/apt.conf.d/01aptproxy
+          echo 'Acquire::http::Proxy "http://chtm-aptcache-01.lan.chtm.me:3142";' | tee /etc/apt/apt.conf.d/01aptproxy
       
       - name: Ensure image is up to date and install build tools and deps
         run: |
-          sudo bash -c "apt update && apt upgrade -y"
-          sudo apt install -y build-essential nasm fdisk dosfstools 
+          bash -c "apt update && apt upgrade -y"
+          apt install -y build-essential nasm fdisk dosfstools 
 
       - name: Build stevia
         run: sudo make
