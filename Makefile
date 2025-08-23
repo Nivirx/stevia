@@ -80,7 +80,7 @@ build/%.bin: src/miniboot32/%.nasm
 
 $(iso): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
 	@echo root access needed to create disk image...
-	@sudo scripts/create-disk.sh
+	@scripts/create-disk.sh
 
 $(isoz): $(iso)
 	@gzip -9kc $(iso) > $(isoz)
