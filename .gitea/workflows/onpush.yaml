@@ -1,0 +1,40 @@
+name: Daily Build and trunk tester
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+  schedule:
+    - cron: "0 7 * * *"   # daily 07:00
+  workflow_dispatch: {}
+
+jobs:
+  debian_update:
+    runs-on: debian-trixie
+    steps:
+      - name: Checkout (if needed)
+        uses: actions/checkout@v4
+
+      - name: Install CHTM apt cache endpoint into container
+        run: |
+          echo 'Acquire::http::Proxy "http://chtm-aptcache-01.lan.chtm.me:3142";' | sudo tee /etc/apt/apt.conf.d/01aptproxy
+      
+      - name: Ensure image is up to date and install build tools and deps
+        run: |
+          sudo bash -c "apt update && apt upgrade -y"
+          sudo apt install -y build-essential nasm fdisk dosfstools 
+
+      - name: Build stevia
+        run: sudo make
+
+      - name: Upload build artifacts
+        if: always()   # still keep logs/artifacts even if build fails
+        uses: actions/upload-artifact@v3
+        with:
+          name: stevia-${{ github.run_number }}
+          path: |
+            build/**
+            disk.img
+            disk.img.gz
+          if-no-files-found: error
+          retention-days: 30   # override server default if you like
