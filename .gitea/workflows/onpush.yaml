@@ -25,7 +25,7 @@ jobs:
           apt install -y build-essential nasm fdisk dosfstools 
 
       - name: Build stevia
-        run: sudo make
+        run: make
 
       - name: Upload build artifacts
         if: always()   # still keep logs/artifacts even if build fails
