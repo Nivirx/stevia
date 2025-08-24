@@ -33,6 +33,8 @@ jobs:
         with:
           name: stevia-${{ github.run_number }}
           path: |
-            build/**
+            build/output/artifacts.tar.gz
+            build/output/disk.img.gz
+            build/output/part.img.gz
           if-no-files-found: error
           retention-days: 30   # override server default if you like

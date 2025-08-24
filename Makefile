@@ -32,8 +32,8 @@ GIT_VERSION := $(shell git describe --tags)
 GIT_HASH := $(shell git rev-parse HEAD)
 GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HASH)"'
 
-iso := '/tmp/disk.img'
-isoz := 'disk.img.gz'
+iso := 'build/disk.img'
+isoz := 'build/output/disk.img.gz'
 
 qemu_args := -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
 .PHONY: all mbr vbr stage2 boottest clean run run_bochs iso isoz
@@ -45,10 +45,11 @@ stage2: $(stage2_binary_files)
 boottest: $(boottest_binary_files)
 
 clean:
-	@rm -rvf *.map
-	@rm -rvf $(build_dir)/*
-	@rm -rvf $(iso)
-	@rm -rvf $(isoz)
+	@rm -v $(build_dir)/*.bin
+	@rm -v $(build_dir)/*.map
+	@rm -v $(build_dir)/*.img
+	@rm -v $(build_dir)/output/*.img.gz
+	@rm -v $(build_dir)/output/*.tar.gz
 
 run: $(iso)
 	@sudo qemu-system-i386 $(qemu_args) -hda $(iso)
@@ -79,7 +80,6 @@ build/%.bin: src/miniboot32/%.nasm
 	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
 
 $(iso): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
-	@echo root access needed to create disk image...
 	@scripts/create-disk.sh
 
 $(isoz): $(iso)

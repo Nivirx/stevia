@@ -17,7 +17,7 @@
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
-[map all vbr.map]                   ; Yes, we use absolute addresses. surpress these warnings.
+[map all build/vbr.map]                   ; Yes, we use absolute addresses. surpress these warnings.
 %define __STEVIA_VBR
 section .text
 __ENTRY:

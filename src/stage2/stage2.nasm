@@ -16,7 +16,7 @@
 [BITS 16]
 [ORG 0x0500]                            ; IF YOU CHANGE ORG CHANGE THE SIGN OFFSET AT THE END
 [CPU KATMAI]
-[map all stage2.map]
+[map all build/stage2.map]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
 [WARNING -reloc-abs-dword]              ; Yes, we use absolute addresses. surpress these warnings.

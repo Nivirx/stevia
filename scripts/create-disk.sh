@@ -23,9 +23,13 @@ stage2_file=build/stage2.bin
 boottest_file=build/BOOTi686.bin
 
 # Disk creation options
-disk_img=/tmp/disk.img
-disk_img_final=build/disk.img.gz
-part_img=/tmp/part.img
+disk_img=build/disk.img
+disk_img_final=build/output/disk.img.gz
+
+part_img=build/part.img
+part_img_final=build/output/part.img.gz
+
+artifacts_archive=build/output/artifacts.tar.gz
 
 # $disk_sector_size * $disk_size = total bytes, default is 256MiB
 disk_sectors=(524288 * 2)
@@ -140,16 +144,15 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         dd if="$stage2_file" of="$disk_img" bs=$disk_sector_size seek=1 conv=notrunc
 
         echo "[7/7] Assembling final disk image"
-
         # place partition at it's place in the disk image
         dd if="$part_img" of="$disk_img" bs=$disk_sector_size seek=$part_start conv=notrunc
-        gzip -9c "$disk_img" > "$disk_img_final"
 
-# requires util-linux from homebrew
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "[WIP]"
+        echo " *** Outputing disk images will be in ./build/output/* *** "
+        gzip -9c "$disk_img" > "$disk_img_final"
+        gzip -9c "$part_img" > "$part_img_final"
+        tar caf "$artifacts_archive" build/*.bin build/*.map
 else
         # Unknown.
-        echo "Unknown OS type! Supported build hosts systems are GNU/Linux (WSL) and macOS."
+        echo "Unknown OS type! Supported build hosts systems are GNU/Linux (& WSL)"
         exit 1
 fi
