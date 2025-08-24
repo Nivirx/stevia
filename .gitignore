@@ -1,6 +1,5 @@
+build/*
 build/output/*
-build/*.bin
-build/*.img
 *.img
 *.img.gz
 *.img.gz
