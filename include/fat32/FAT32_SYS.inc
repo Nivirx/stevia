@@ -32,7 +32,7 @@ InitFATDriver:
     mov ax, fat32_state
     push ax                     ; address of structure
     call kmemset
-    sub sp, 0x6
+    add sp, 0x6
 
 .calc_active_part:
     mov ax, word [partition_offset]            
@@ -221,7 +221,7 @@ NextCluster:
     mov ax, fat32_nc_data
     push ax                     ; address of structure
     call kmemset
-    sub sp, 0x6
+    add sp, 0x6
 
     mov edx, dword [bp + 4]
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
