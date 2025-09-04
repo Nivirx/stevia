@@ -40,23 +40,27 @@ GetMemoryMap:
 .func:
     mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], 0
 
-    mov eax, 0xE820                         ; select 0xE820 function
+    
     xor ebx, ebx                            ; Continuation value, 0 for the first call
 
-    lea dx, [BIOSMemoryMap]
+    mov dx, BIOSMemoryMap
     shr dx, 4
     mov es, dx
     xor di, di                              ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
 
-    mov ecx, AddressRangeDescStruct_t_size
-    mov edx, 0x534D4150                     ; 'SMAP' magic
+    mov ecx, AddressRangeDescStruct_t_size  ; hard request ACPI 3.0 table versions (24 bytes)
+    
 .loop_L1:
+    mov eax, 0x0000E820                     ; select 0xE820 function
+    mov edx, 0x534D4150                     ; 'SMAP' magic
     int 0x15
     jc GetMemoryMap.error
     cmp eax, 0x534D4150
     jne GetMemoryMap.no_smap_returned
 .no_error:
-    inc dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
+    mov eax, dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
+    add eax, 1
+    mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], eax
 
     cmp ecx, 20                             ; TODO: maybe this could be handled better than just panicing
     jb GetMemoryMap.nonstandard_e820        ; non-standard entry found 
@@ -64,9 +68,11 @@ GetMemoryMap:
     cmp ebx, 0
     je GetMemoryMap.endp                    ; 0 in ebx means we have reached the end of memory ranges
 
-    add di, AddressRangeDescStruct_t_size   ; increment di to next descriptor
-    mov edx, eax                            ; 'SMAP' to edx
-    mov eax, 0xE820                         ; select E820 function
+    ; setup for next loop, ebx is our next index and has already been set.
+    xor ecx, ecx
+    mov ecx, AddressRangeDescStruct_t_size  ; set ecx (requested_size) to 24 bytes
+    add di, cx                              ; increment di to next descriptor so es:di points to the next free space
+
     jmp GetMemoryMap.loop_L1
 .error:
     ERROR STAGE2_MM_E820_MISC_ERR
