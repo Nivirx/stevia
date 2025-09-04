@@ -504,24 +504,24 @@ section .bss follows=.sign
 begin_bss:
 ; structures
 
-align 8, resb 1
+alignb 16
 partition_table resb PartTable_t_size
 
-align 8, resb 1
+alignb 16
 fat32_bpb resb FAT32_bpb_t_size
 fat32_ebpb resb FAT32_ebpb_t_size
 
-align 8, resb 1
+alignb 16
 fat32_nc_data resb 16
 
-align 8, resb 1
+alignb 16
 lba_packet resb LBAPkt_t_size
 
-align 8, resb 1
+alignb 16
 fat32_state:
     resb FAT32_State_t_size
 
-align 8, resb 1
+alignb 16
 SteviaInfo:
     resd 4
 ;
@@ -531,7 +531,7 @@ SteviaInfo:
 ;
 ; large continuous allocations
 ;
-align 16, resb 1
+alignb 16
 disk_buffer:
     resb 512
 fat_buffer:
@@ -541,12 +541,12 @@ dir_buffer:
 fat_fsinfo:
     resb 512
 
-align 16, resb 1
-%define BIOSMemoryMap_SIZE 2048
+alignb 16
+%define BIOSMemoryMap_SIZE 1024
 BIOSMemoryMap:
-    resb 2048
+    resb BIOSMemoryMap_SIZE
 
-align 512, resb 1
+alignb 512
 stack_bottom:
     resb 1024
 stack_top:
