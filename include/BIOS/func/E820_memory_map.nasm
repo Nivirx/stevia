@@ -84,6 +84,38 @@ GetMemoryMap:
     pop es
     __CDECL16_EXIT
     ret
+
+PrintMemoryMap:
+    __CDECL16_ENTRY
+.func:
+    mov eax, dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
+    cmp eax, 0
+    je PrintMemoryMap.endp          ; if entries == 0, exit
+
+    mov ecx, eax                    ; store # of entries in counter
+    mov eax, BIOSMemoryMap          ; address to start of e820 mmap
+
+    push dword ecx
+    push dword eax
+    call FormatMemoryMapEntry
+    add sp, 0x8
+
+    ; ax contains segment offset to string after call
+    ; TODO: going to need an allocator for strings and stuff...
+    ; print_string strformat_buffer
     
+.endp:
+    __CDECL16_EXIT
+    ret
+
+FormatMemoryMapEntry:
+    __CDECL16_ENTRY
+.func:
+    ; create a string buffer somewhere and return address to result string in ax
+.endp:
+    __CDECL16_EXIT
+    ret
+
+
 %endif
 %define __INC_E820MEMORY_MAP
