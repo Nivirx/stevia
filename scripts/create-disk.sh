@@ -16,6 +16,11 @@ set -euo pipefail
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+if [ $(id -u) = 0 ]; then
+   echo "Script should not be run as root, it could break something! Exiting!" >&2
+   exit 1
+fi
+
 # paths to bootcode
 mbr_file=build/mbr.bin
 vbr_file=build/vbr.bin
@@ -68,6 +73,11 @@ sector-size: $disk_sector_size
 label-id: 0xa0b0c0d0
 
 start=$part_start, size=$((disk_sectors - part_start)), type=c, bootable
+EOF
+
+mtool_src=/tmp/mtools.conf
+cat > $mtool_src <<EOF
+drive c: file="$part_img"
 EOF
 
 #
@@ -133,7 +143,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         dd if="$part_img" of="$part_img" bs=$disk_sector_size count=1 seek=6 conv=notrunc
 
         echo "[5/7] Copy boot payload to FAT32 filesystem using mtools as BOOT.BIN"
-        mcopy -i "$part_img" "$boottest_file" ::/BOOT.BIN
+        MTOOLSRC="$mtool_src" mcopy "$boottest_file" C:BOOT.BIN
+        MTOOLSRC="$mtool_src" mdir C:
 
         echo "[6/7] Patch MBR and install stage2 loader to disk image"
         # patch MBR+signature while preserving partition table
