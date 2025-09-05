@@ -9,11 +9,29 @@ struc ArenaStateStruc_t
     .mark resw 1
 endstruc
 
-; void arena_init(void *mem, size_t bytes)
+; void arena_init(ArenaState *a)
 ;
 arena_init:
     __CDECL16_ENTRY
 .func:
+    movzx eax, word [bp + 4]     ; ptr to state structure
+    mov di, ax
+
+    xor eax, eax
+    mov word [di + ArenaStateStruc_t.mark], eax
+    mov word [di + ArenaStateStruc_t.end], word (__ARENA_HEAP_START + __ARENA_HEAP_SIZE)
+    mov word [di + ArenaStateStruc_t.start], __ARENA_HEAP_START
+
+    ; zero out heap area on init
+    ; void* kmemset_byte(void* dst, uint8_t val, uint16_t len);
+    mov ax, __ARENA_HEAP_SIZE
+    push ax                     ; len
+    xor ax, ax
+    push ax                     ; val = 0
+    mov ax, __ARENA_HEAP_START
+    push ax                     ; dst
+    call kmemset
+    add sp, 0x6
 
 .endp:
     __CDECL16_EXIT
