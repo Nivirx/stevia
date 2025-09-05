@@ -38,28 +38,26 @@ arena_init:
     ret
 
 ; size_t align_up(size_t x, size_t a)
-; eax, ebx. ecx are all clobbered
+; ax, bx. cx are all clobbered
+; align x up to the nearest specified alignment (a), a should be a power of 2
+; (x + (a-1)) & ~(a-1)
+; return value in ax
 arena_align_up:
     __CDECL16_ENTRY
 .func:
-    ; align x up to the nearest specified alignment (a)
-    ; (x + (a-1)) & ~(a-1)
-    mov eax, [bp + 4]   ; x
+    
+    mov ax, [bp + 4]      ; x
 
-    mov ebx, [bp + 6]   ; a - 1
-    sub ebx, 1
+    mov bx, [bp + 6]      
+    sub bx, 1             ; a - 1
 
-    mov ecx, eax
-    add ecx, ebx        ; x + (a+1)
+    mov cx, ax
+    add cx, bx            ; x + (a+1)
+    not bx                ; ~(a-1)
 
-    not ebx
-    and ecx, ebx        ; ecx contains the result
+    and cx, bx            ; and with the inverse
 
-    xor eax, eax
-    xor ebx, ebx
-    mov eax, ecx        ; return result in eax
-    xor ecx, ecx
-
+    mov ax, cx            ; move to ax and return
 .endp:
     __CDECL16_EXIT
     ret
