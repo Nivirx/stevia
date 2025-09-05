@@ -24,12 +24,14 @@ SetTextMode:
     pushf
 .func:
     xor ah, ah                  ; Set Video mode BIOS function
-    mov al, 0x02                ; 16 color 80x25 Text mode
+    mov al, 0x03                ; 16 color 80x25 Text mode
     int 0x10                    ; Call video interrupt
+                                ; TODO: check for carry and clear carry before call
 
     mov ah, 0x05                ; Select active display page BIOS function
     xor al, al                  ; page 0
     int 0x10                    ; call video interrupt
+                                ; TODO: check for carry and clear carry before call
 .endp:
     popf
     __CDECL16_EXIT
@@ -50,6 +52,103 @@ disable_cursor:
 .endp:
     __CDECL16_EXIT
     ret
-    
+
+; Prints a C-Style string (null terminated) using BIOS vga teletype call
+; void PrintString(char* buf)
+ALIGN 4, db 0x90
+PrintString:
+    __CDECL16_ENTRY
+    mov di, [bp + 4]    ; first arg is char[] 
+.str_len:
+    xor cx, cx         ; ECX = 0
+    not cx             ; ECX = -1 == 0xFFFF
+    xor ax, ax         ; search for al = 0x0
+
+    cld
+    repne scasb        ; deincrement cx while searching for al
+
+    not cx             ; the inverse of a neg number = abs(x) - 1
+    dec cx             ; CX contains the length of the string - nul byte at end
+.print:
+    mov si, [bp + 4]            ; source string
+.print_L0:
+    movzx ax, byte [si]
+    push ax
+    call PrintCharacter
+    add sp, 0x2
+
+    inc si
+    dec cx
+
+    jcxz PrintString.endp
+    jmp PrintString.print_L0    ; Fetch next character from string
+.endp:
+    __CDECL16_EXIT
+    ret                         ; Return from procedure
+
+; Prints a single character
+; void PrintCharacter(char c);
+ALIGN 4, db 0x90
+PrintCharacter:
+    __CDECL16_ENTRY
+.func:
+    movzx ax, byte [bp + 4]     ; AL = character c
+    mov ah, 0x0E                ; INT 0x10, AH=0x0E call
+    mov bx, 0x0007              ; BH = page no. BL =Text attribute 0x07 is lightgrey font on black background
+    int 0x10                    ; call video interrupt
+                                ; TODO: check for carry and clear carry before call
+.endp:
+    __CDECL16_EXIT
+    ret
+
+; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
+; prints the hex representation of of val
+; void PrintDWORD(uint32_t val);
+ALIGN 4, db 0x90
+PrintDWORD:
+    __CDECL16_ENTRY
+.func: 
+    mov si, IntToHex_table
+    mov ebx, 16     ; base-16
+
+    mov eax, dword [bp + 4]     ;val
+
+    xor edx, edx
+    xor cx, cx
+.next_digit:
+    div ebx            ; dividend in edx:eax -> quotient in eax, remainder in edx
+    push dx            ; save remainder
+    inc cx
+
+    xor dx, dx
+    test eax, eax
+    jnz PrintDWORD.next_digit
+
+.zero_pad:
+    cmp cx, 0x0008
+    je PrintDWORD.print_stack
+    xor ax, ax
+    push ax
+    inc cx
+    jmp PrintDWORD.zero_pad
+
+.print_stack:
+    pop bx
+    dec cx
+    push cx
+
+    movzx ax, byte [bx+si+0]    ; bx = index into Hex lookup table
+    push ax
+    call PrintCharacter
+    add sp, 0x2
+
+    pop cx
+
+    jcxz PrintDWORD.endp
+    jmp PrintDWORD.print_stack
+
+.endp:
+    __CDECL16_EXIT
+    ret
 %endif
 %define __INC_VIDEO
