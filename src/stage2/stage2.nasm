@@ -224,9 +224,9 @@ EnterUnrealMode:
     jmp 0x0000:EnterUnrealMode.endp
 .endp:
     sti                                   ; re-enable interupts
-    
+
     ; set ds, es to the STAGE2_SEGMENT, for our model (generally) ds == es == cs
-    ; fs, gs & ss are all still huge data model, and the macro "__REFLAT_DS_ES" exists
+    ; fs, gs & ss are all still huge data model, and the macro(s) "__REFLAT_xxx" exists
     ; to easily access data outside of 64KiB boundries using ds/es addressing
     __TINY_DS_ES
 
