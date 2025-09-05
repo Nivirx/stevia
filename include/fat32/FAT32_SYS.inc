@@ -146,7 +146,7 @@ SearchFATDIR:
         xor ax, ax
         push ax                 ; segment
         call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
-        sub sp, 0x8
+        add sp, 0x8
     .empty_dir_entry:
         ; check for 0x0 in first byte, if true then there are no more files
         ; if true we did not find the file, we should error here
