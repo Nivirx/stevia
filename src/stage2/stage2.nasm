@@ -162,12 +162,6 @@ main:
 
     ; enter unreal mode (16 bit code, 32 bit flat memory model)
     call EnterUnrealMode
-
-    ; set ds, es to the STAGE2_SEGMENT, for our model (generally) ds == es == cs
-    ; fs, gs & ss are all still huge data model, and the macro "__REFLAT_DS_ES" exists
-    ; to easily access data outside of 64KiB boundries using ds/es addressing
-    __TINY_DS_ES
-
     print_string UnrealMode_OK_info
 
     ; FAT Driver setup
@@ -207,7 +201,6 @@ EnterUnrealMode:
     mov eax, cr0                          
     or eax, 1                             ; set pmode bit
     mov cr0, eax                          ; switch to pmode
-    ;jmp short $+2                         ; i-cache flush
 
     ; set cs to a pm code segment (0x8) w/ the following
     jmp 0x0008:EnterUnrealMode.set_segs
@@ -219,7 +212,6 @@ EnterUnrealMode:
     mov ds, ax                            ; 10h = 0001_0000b
     mov es, ax                            ; es to big data
 
-    mov ss, ax                            ; big stack
     mov fs, ax
     mov gs, ax                            ; extra segments to big data as well
 .pm_start:
@@ -230,9 +222,14 @@ EnterUnrealMode:
     and eax, ~1                           ; toggle bit 1 of cr0
     mov cr0, eax                          ; back to realmode
     jmp 0x0000:EnterUnrealMode.endp
-    ;jmp short $+2                         ; i-cache flush
 .endp:
     sti                                   ; re-enable interupts
+    
+    ; set ds, es to the STAGE2_SEGMENT, for our model (generally) ds == es == cs
+    ; fs, gs & ss are all still huge data model, and the macro "__REFLAT_DS_ES" exists
+    ; to easily access data outside of 64KiB boundries using ds/es addressing
+    __TINY_DS_ES
+
     __CDECL16_EXIT
     ret
 end_text:
