@@ -192,21 +192,22 @@ hcf:
 ; ##############################
 ALIGN 4, db 0x90
 EnterUnrealMode:
+    __BOCHS_MAGIC_DEBUG
     __CDECL16_ENTRY
     cli                                   ; no interrupts
 .func:    
     lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
 
     mov eax, cr0                          
-    or al,1                               ; set pmode bit
+    or eax, 1                             ; set pmode bit
     mov cr0, eax                          ; switch to pmode
-    jmp short $+2                         ; i-cache flush
+    ;jmp short $+2                         ; i-cache flush
 
     ; set cs to a pm code segment (0x8) w/ the following
-    ;jmp far 0x0008:EnterUnrealMode.set_segs
-    db 0xEA                               ; jmp far imm16:imm16
-    dw EnterUnrealMode.set_segs            ; error_far_ptr
-    dw 0x0008                             ; error_far_seg
+    jmp 0x0008:EnterUnrealMode.set_segs
+    ;db 0xEA                               ; jmp far imm16:imm16
+    ;dw EnterUnrealMode.set_segs           ; error_far_ptr
+    ;dw 0x0008                             ; error_far_seg
 .set_segs:
     mov ax, 0x10                          ; select descriptor 2
     mov ds, ax                            ; 10h = 0001_0000b
@@ -216,13 +217,14 @@ EnterUnrealMode:
     mov fs, ax
     mov gs, ax                            ; extra segments to big data as well
 .pm_start:
-    ; code here is running in protected mode
+    ; code here is running in protected mode w/ descriptor 0x8
+    ; insert any PM test code needed here
 .pm_end:
     mov eax, cr0
-    and al,0xFE                           ; toggle bit 1 of cr0
+    and eax, ~1                           ; toggle bit 1 of cr0
     mov cr0, eax                          ; back to realmode
-    jmp short $+2                         ; i-cache flush
-  
+    jmp 0x0000:EnterUnrealMode.endp
+    ;jmp short $+2                         ; i-cache flush
 .endp:
     sti                                   ; re-enable interupts
     __CDECL16_EXIT
@@ -302,14 +304,14 @@ unreal_gdt_start:
     ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
 
-    ; entry 1 (16bit code 64KiB limit)
+    ; entry 1 (0x8) (16bit code 64KiB limit)
     dd 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
     db 0x00              ; Base Address 23:16
     db 1001_1010b        ; Access Byte: Present, ring0, S = 1, executable (1), non-conforming, readable, Accessed
     db 0000_0000b        ; Flags: GR = 4KiB, attr = <DB/L/Avl>, Granularity = 4KiB & 16:19 of limit
     db 0x00              ; Base Address 31:24
 
-    ; entry 2 (16bit data segment with 4 GiB flat mapping)
+    ; entry 2 (0x10) (16bit data segment with 4 GiB flat mapping)
     dd 0x0000FFFF        ; Base Address(15:0) 31:16, Segment Limit(15:0) 15:0
     db 0x00              ; Base Address(23:16)
     db 1001_0010b        ; Access Byte: Present, ring0, S = 1, data (0), non-confirming, writable, present
