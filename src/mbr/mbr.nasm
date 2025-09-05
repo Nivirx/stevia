@@ -58,7 +58,7 @@ init:
     cld
     rep stosb                         ; zero bss section
 
-    sub sp, 0x20                    ; local varible space
+    sub sp, 0x20                    ; local varible space (32 bytes)
     push bp                         ; setup top of stack frame
 
     xor cx, cx
@@ -96,7 +96,7 @@ main:
         mov ah, 0x41
         mov bx, 0x55AA
         mov dl, 0x80
-        
+
         clc
         int 0x13
         jnc main.find_active

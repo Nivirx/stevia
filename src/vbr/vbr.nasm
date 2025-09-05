@@ -72,7 +72,7 @@ init:
     cld
     rep stosb                          
     
-    sub sp, 0x20                    ; local varible space
+    sub sp, 0x20                    ; local varible space (32 bytes)
     push bp
 
     sti                             ; all done with inital setup and relocation, reenable interupts
