@@ -105,6 +105,7 @@ EnableA20:
     je EnableA20.endp         ; A20 is already enabled
 
     mov ax, 0x2403
+    clc                             ; clear carry
     int 0x15
     jc EnableA20.do_fallback_a20    ; carry = error...not supported?
     cmp ah, 0
@@ -121,6 +122,7 @@ EnableA20:
     ERROR STAGE2_A20_FAILED
 .do_bios_a20:
     mov ax, 0x2401
+    clc                             ; clear carry
     int 0x15
     jmp EnableA20.a20_check
 .do_fast_a20:

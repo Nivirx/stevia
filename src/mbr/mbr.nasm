@@ -96,6 +96,8 @@ main:
         mov ah, 0x41
         mov bx, 0x55AA
         mov dl, 0x80
+        
+        clc
         int 0x13
         jnc main.find_active
         ERROR MBR_ERROR_NO_INT32E                         ; no extended function support

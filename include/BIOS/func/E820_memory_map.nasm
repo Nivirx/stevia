@@ -53,6 +53,7 @@ GetMemoryMap:
 .loop_L1:
     mov eax, 0x0000E820                     ; select 0xE820 function
     mov edx, 0x534D4150                     ; 'SMAP' magic
+    clc                                     ; clear carry
     int 0x15
     jc GetMemoryMap.error
     cmp eax, 0x534D4150

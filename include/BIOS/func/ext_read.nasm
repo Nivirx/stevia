@@ -111,6 +111,7 @@ read_disk_raw:
     mov ah, 0x42                ; call #
     mov dl, byte [bp + 14]      ; drive #             
 
+    clc                         ; clear carry
     int 0x13
     jnc .endf
 
