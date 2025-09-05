@@ -68,3 +68,34 @@
     pop bp
 %endmacro
 %endif
+
+%ifnmacro __DEFLAT_DS_ES
+%macro __DEFLAT_DS_ES 0
+    mov ax, __STAGE2_SEGMENT
+    mov ds, ax
+    mov es, ax
+%endmacro
+%endif
+
+%ifnmacro __REFLAT_DS_ES
+%macro __REFLAT_ES 0
+    cli                                   ; no interrupts   
+    lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
+
+    mov eax, cr0                          
+    or eax, 1                             ; set pmode bit
+    mov cr0, eax                          ; switch to pmode
+    jmp short $+2                         ; i-cache flush
+
+    mov ax, 0x10                          ; select descriptor 2
+    mov ds, ax                            ; 10h = 0001_0000b
+    mov es, ax                            ; es to big data
+
+    mov eax, cr0
+    and eax, ~1                           ; toggle bit 1 of cr0
+    mov cr0, eax                          ; back to realmode
+    jmp short $+2                         ; i-cache flush
+    sti
+
+%endmacro
+%endif
