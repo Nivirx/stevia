@@ -78,7 +78,7 @@
 %endif
 
 %ifnmacro __REFLAT_DS_ES
-%macro __REFLAT_ES 0
+%macro __REFLAT_DS_ES 0
     cli                                   ; no interrupts   
     lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
 
