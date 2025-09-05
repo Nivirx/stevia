@@ -14,14 +14,17 @@
 ;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 %ifnmacro __CDECL16_ENTRY
-%macro __CDECL16_ENTRY 0
+%macro __CDECL16_ENTRY 0-1
     push bp
     mov bp, sp
-    sub sp, 0x10
 
     push si
     push di
     push bx
+
+    %if %0 = 1
+    sub  sp, %1        ; reserve locals only when needed
+    %endif
 %endmacro
 %endif
 
