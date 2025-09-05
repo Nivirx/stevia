@@ -110,9 +110,9 @@ ALIGN 4, db 0x90
 PrintCharacter:
     __CDECL16_ENTRY
 .func:
-    movzx ax, byte [bp + 4]     ; AL = character c
+    mov al, byte [bp + 4]       ; AL = character c
     mov ah, 0x0E                ; INT 0x10, AH=0x0E call
-    mov bx, 0x0007              ; BH = page no. BL =Text attribute 0x07 is lightgrey font on black background
+    mov bx, 0x0007              ; BH = page no. BL =Text attribute
     int 0x10                    ; call video interrupt
                                 ; TODO: check for carry and clear carry before call
 .endp:
