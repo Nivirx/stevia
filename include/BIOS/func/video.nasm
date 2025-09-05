@@ -26,20 +26,20 @@ SetTextMode:
     xor ah, ah                  ; Set Video mode BIOS function
     mov al, 0x03                ; 16 color 80x25 Text mode
     int 0x10                    ; Call video interrupt
-                                ; TODO: check for carry and clear carry before call
+                                
 
     mov ah, 0x05                ; Select active display page BIOS function
     xor al, al                  ; page 0
     int 0x10                    ; call video interrupt
-                                ; TODO: check for carry and clear carry before call
 .endp:
     popf
     __CDECL16_EXIT
     ret
 
-; disables blinking text mode cursor
+; disables blinking text mode cursor via crtc pokes
+; 0x3D4/0x3D5 for color, mono at 0x3B4/0x3B5
 ALIGN 4, db 0x90
-disable_cursor:
+disable_cursor_crtc:
     __CDECL16_ENTRY
 .func:
     mov dx, 0x3D4
@@ -49,6 +49,24 @@ disable_cursor:
 	inc dx
 	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
 	out dx, al
+.endp:
+    __CDECL16_EXIT
+    ret
+
+; disables blinking text mode cursor via BIOS int 10h, ah = 01
+ALIGN 4, db 0x90
+disable_cursor_bios:
+    __CDECL16_ENTRY
+.func:
+    push bx
+    mov  ah, 03h      ; read cursor pos & shape
+    xor  bh, bh
+    int  10h          ; CH=top scanline, CL=bottom
+
+    or   ch, 20h      ; set bit 5 = disable
+    mov  ah, 01h      ; set leaf 01h
+    int  10h
+    pop  bx
 .endp:
     __CDECL16_EXIT
     ret
