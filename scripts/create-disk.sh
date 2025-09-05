@@ -17,8 +17,7 @@ set -euo pipefail
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 if [ $(id -u) = 0 ]; then
-   echo "Script should not be run as root, it could break something! Exiting!" >&2
-   exit 1
+   echo "Script should not be run as root, it could break something!" >&2
 fi
 
 # paths to bootcode
