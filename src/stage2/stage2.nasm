@@ -162,6 +162,12 @@ main:
 
     ; enter unreal mode (16 bit code, 32 bit flat memory model)
     call EnterUnrealMode
+
+    ; set ds, es to the STAGE2_SEGMENT, for our model (generally) ds == es == cs
+    ; fs, gs & ss are all still huge data model, and the macro "__REFLAT_DS_ES" exists
+    ; to easily access data outside of 64KiB boundries using ds/es addressing
+    __TINY_DS_ES
+
     print_string UnrealMode_OK_info
 
     ; FAT Driver setup

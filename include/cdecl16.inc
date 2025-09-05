@@ -69,8 +69,8 @@
 %endmacro
 %endif
 
-%ifnmacro __DEFLAT_DS_ES
-%macro __DEFLAT_DS_ES 0
+%ifnmacro __TINY_DS_ES
+%macro __TINY_DS_ES 0
     mov ax, __STAGE2_SEGMENT
     mov ds, ax
     mov es, ax
