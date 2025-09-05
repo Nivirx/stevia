@@ -160,7 +160,7 @@ main:
     call GetMemoryMap
     print_string MemoryMap_OK_info
 
-    ; enter unreal mode
+    ; enter unreal mode (16 bit code, 32 bit flat memory model)
     call EnterUnrealMode
     print_string UnrealMode_OK_info
 
