@@ -158,8 +158,10 @@ main:
     print_string HelloPrompt_info
     
     ; setup the early heap
-    push area
+    mov ax, early_heap_state    
+    push ax                             ; address in bss of state structure
     call arena_init
+    add sp, 0x2
 
     ; enable A20 gate
     call EnableA20

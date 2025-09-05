@@ -18,12 +18,13 @@ arena_init:
     mov di, ax
 
     xor eax, eax
-    mov word [di + ArenaStateStruc_t.mark], eax
+    mov word [di + ArenaStateStruc_t.mark], ax
     mov word [di + ArenaStateStruc_t.end], word (__ARENA_HEAP_START + __ARENA_HEAP_SIZE)
     mov word [di + ArenaStateStruc_t.start], __ARENA_HEAP_START
 
     ; zero out heap area on init
     ; void* kmemset_byte(void* dst, uint8_t val, uint16_t len);
+    ; TODO: use word or qword spacing at least to speed this up
     mov ax, __ARENA_HEAP_SIZE
     push ax                     ; len
     xor ax, ax
