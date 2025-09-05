@@ -149,7 +149,7 @@ main:
     add sp, 0x6
 
     call SetTextMode
-    call disable_cursor
+    call disable_cursor_bios
     print_string HelloPrompt_info
     
     ; enable A20 gate
@@ -190,67 +190,41 @@ hcf:
 ; SYSTEM CONFIGURATION FUNCTIONS
 ;
 ; ##############################
-
-
-
-; ##############################
-;
-; SYSTEM CONFIGURATION FUNCTIONS
-;
-; ##############################
 ALIGN 4, db 0x90
 EnterUnrealMode:
     __CDECL16_ENTRY
-.func:
-    cli                         ; no interrupts
-    push ds                     ; save real mode data/stack selectors
-    push es
-    push fs
-    push gs
-    push ss
-
-    push cs                               ; save real mode code selector
-    xor ax, ax                            ;
-    pop ax                                ; save cs to ax to setup far jump
-    mov word [__UNREAL_SEGMENT], ax    
-
+    cli                                   ; no interrupts
+.func:    
     lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
 
     mov eax, cr0                          
     or al,1                               ; set pmode bit
     mov cr0, eax                          ; switch to pmode
-    jmp short $+2
+    jmp short $+2                         ; i-cache flush
 
-    ;jmp far 0x0008:EnterUnrealMode.load_cs
+    ; set cs to a pm code segment (0x8) w/ the following
+    ;jmp far 0x0008:EnterUnrealMode.set_segs
     db 0xEA                               ; jmp far imm16:imm16
-    dw EnterUnrealMode.load_cs            ; error_far_ptr
+    dw EnterUnrealMode.set_segs            ; error_far_ptr
     dw 0x0008                             ; error_far_seg
-.load_cs:
-    mov bx, 0x10                          ; select descriptor 2
-    mov ds, bx                            ; 10h = 0001_0000b
-                  
-    mov ss, bx
-    mov es, bx
-    mov fs, bx
-    mov gs, bx                            ; other data/stack to index 2 (off 0x10)
-    
+.set_segs:
+    mov ax, 0x10                          ; select descriptor 2
+    mov ds, ax                            ; 10h = 0001_0000b
+    mov es, ax                            ; es to big data
+
+    mov ss, ax                            ; big stack
+    mov fs, ax
+    mov gs, ax                            ; extra segments to big data as well
+.pm_start:
+    ; code here is running in protected mode
+.pm_end:
+    mov eax, cr0
     and al,0xFE                           ; toggle bit 1 of cr0
     mov cr0, eax                          ; back to realmode
-    jmp short $+2
-    
-    ;jmp far 0x0008:EnterUnrealMode.unload_cs
-    db 0xEA                               ; jmp far imm16:imm16
-    dw EnterUnrealMode.unload_cs          ; error_far_ptr
-__UNREAL_SEGMENT:
-    dw 0x0000                             ; error_far_seg
-EnterUnrealMode.unload_cs:
-    pop ss
-    pop gs
-    pop fs
-    pop es
-    pop ds                                ; get back old segments
-    sti
+    jmp short $+2                         ; i-cache flush
+  
 .endp:
+    sti                                   ; re-enable interupts
     __CDECL16_EXIT
     ret
 end_text:
