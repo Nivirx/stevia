@@ -68,6 +68,7 @@ arena_alloc:
 .func:
     ; remove bytes from pool and increment mark to the new cursor location
     ; return a pointer to the begining of  allocated segment
+    ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
     __CDECL16_EXIT
     ret
@@ -76,6 +77,7 @@ arena_mark:
     __CDECL16_ENTRY
 .func:
     ; return the current location of the 'cursor' in the allocator
+    ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
     __CDECL16_EXIT
     ret
@@ -84,6 +86,7 @@ arena_reset_to:
     __CDECL16_ENTRY
 .func:
     ; rewind the arena to a previously marked point
+    ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
     __CDECL16_EXIT
     ret
@@ -92,6 +95,7 @@ arena_reset:
     __CDECL16_ENTRY
 .func:
     ; reset the entire heap to a fresh state
+    ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
     __CDECL16_EXIT
     ret

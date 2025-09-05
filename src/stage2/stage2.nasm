@@ -88,13 +88,18 @@ init:
     jmp word __STAGE2_SEGMENT:main
 
 ; ###############
-; Functions
+; Core Functions
 ; ###############
 
 %include "util/kmem_func.nasm"
 %include "util/kmemcpy5_func.nasm"
 %include "util/kmemset4_func.nasm"
 %include "util/error_func.nasm"
+
+; ###############
+; Functions
+; ###############
+%include "util/arena_alloc.nasm"
 
 ; ###############
 ; FAT32 Driver
@@ -152,6 +157,10 @@ main:
     call disable_cursor_bios
     print_string HelloPrompt_info
     
+    ; setup the early heap
+    push area
+    call arena_init
+
     ; enable A20 gate
     call EnableA20
     print_string A20_Enabled_OK_info
@@ -413,6 +422,10 @@ fat32_state:
 align 16, resb 1
 SteviaInfo:
     resd 4
+
+align 16, resb 1
+early_heap_state:
+    resb ArenaStateStruc_t_size
 ;
 ; post-bss init globals
 ;
