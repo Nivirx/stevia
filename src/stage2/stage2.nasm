@@ -361,13 +361,13 @@ begin_data:
 %define CRLF 0Dh, 0Ah
 
 %macro define_cstr 2
-    ALIGN 16
+    align 16
     %1_cstr:
         db %2, 00h
 %endmacro
 
 %macro define_info 2
-    ALIGN 16
+    align 16
     %1_info:
         db %2, CRLF, 00h
 %endmacro
@@ -386,7 +386,7 @@ define_info MaybeFound_Boot, "Maybe found a file...checking..."
 
 define_cstr BootTarget, "BOOT    BIN"
 
-ALIGN 16, db 0
+align 16, db 0
 BootTarget:
     db 'BOOT    BIN'
 
@@ -394,28 +394,28 @@ BootTarget:
 ; pre-bss init globals (generally const...but there are exceptions)
 ;
 
-align 8, db 0x00
+align 8, db 0
 boot_drive:
     db 0x00
 
-align 8, db 0x00
+align 8, db 0
 partition_offset:
     dw 0x0000
 
-align 8, db 0x00
+align 8, db 0
 vbr_fat32_bpb_ptr:
     dw 0x0000
 
-align 8, db 0x00
+align 8, db 0
 vbr_part_table_ptr:
     dw 0x0000
 
-ALIGN 16
+align 16, db 0
 IntToHex_table:
     db '0123456789ABCDEF'
 
 ; see docs/gdt.txt for a quick refresher on GDT 
-ALIGN 16, db 0
+align 16, db 0
 unreal_gdt_info:
     unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
     unreal_gdt_ptr:  dd ((__STAGE2_SEGMENT << 4) + unreal_gdt_start)
@@ -438,7 +438,7 @@ unreal_gdt_start:
     db 0x00              ; Base Address(31:24)
 unreal_gdt_end:
 
-ALIGN 16, db 0
+align 16, db 0
 gdt32_info:
     gdt32_size: dw (gdt32_end - gdt32_start) - 1
     gdt32_ptr:  dd ((__STAGE2_SEGMENT << 4) + gdt32_start)
@@ -474,19 +474,19 @@ gdt32_start:
         db 0x00
 gdt32_end:
 
-ALIGN 8,db 0x00
+align 16,db 0
 BUILD_NASM_VER:
     db "Stevia Stage2 built with NASM - ", __NASM_VER__, 00h
 
-ALIGN 8,db 0x00
+align 16,db 0
 BUILD_DATETIME:
     db 'Assembled - ', __DATE__, ' ', __TIME__, 00h
 
-ALIGN 8,db 0x00
+align 16,db 0
 BUILD_GIT_VER:
     db __GIT_VER__, 00h
 
-ALIGN 8,db 0x00
+align 16,db 0
 BUILD_GIT_HASH:
     db __GIT_HASH__, 00h
 end_data:
@@ -504,24 +504,29 @@ section .bss follows=.sign
 begin_bss:
 ; structures
 
-alignb 16
-partition_table resb PartTable_t_size
+align 16, resb 1
+partition_table: 
+    resb PartTable_t_size
 
-alignb 16
-fat32_bpb resb FAT32_bpb_t_size
-fat32_ebpb resb FAT32_ebpb_t_size
+align 16, resb 1
+fat32_bpb: 
+    resb FAT32_bpb_t_size
+fat32_ebpb: 
+    resb FAT32_ebpb_t_size
 
-alignb 16
-fat32_nc_data resb 16
+align 16, resb 1
+fat32_nc_data: 
+    resb 16
 
-alignb 16
-lba_packet resb LBAPkt_t_size
+align 16, resb 1
+lba_packet: 
+    resb LBAPkt_t_size
 
-alignb 16
+align 16, resb 1
 fat32_state:
     resb FAT32_State_t_size
 
-alignb 16
+align 16, resb 1
 SteviaInfo:
     resd 4
 ;
@@ -531,7 +536,7 @@ SteviaInfo:
 ;
 ; large continuous allocations
 ;
-alignb 16
+align 16, resb 1
 disk_buffer:
     resb 512
 fat_buffer:
@@ -541,12 +546,15 @@ dir_buffer:
 fat_fsinfo:
     resb 512
 
-alignb 16
+; TODO: this will hold 42 entries from the map function
+; the e820 function needs to check that it doesn't overflow
+; but realisticly 42 entries is enough for dev work
+align 16, resb 1
 %define BIOSMemoryMap_SIZE 1024
 BIOSMemoryMap:
     resb BIOSMemoryMap_SIZE
 
-alignb 512
+align 16, resb 1
 stack_bottom:
     resb 1024
 stack_top:
