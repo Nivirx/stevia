@@ -1,6 +1,6 @@
 # Stevia Bootloader
 
-Stevia is a lightweight, hobby bootloader written in Assembly and C, designed for educational purposes. It targets x86 (Pentium III era) and aims to be simple, approachable, and understandable, focusing on minimalism and core functionality.
+Stevia is a lightweight, hobby bootloader written in Assembly and C, designed for educational purposes. It targets 686+ and aims to be simple, approachable, and understandable, focusing on minimalism and core functionality.
 
 ## Features
 
@@ -10,18 +10,13 @@ Stevia is a lightweight, hobby bootloader written in Assembly and C, designed fo
 - **Stage 2 Bootloader**: Loads the kernel into memory and passes control.
 - **Basic Filesystem Support**: Initial filesystem recognition (details depend on implemented filesystem support).
 - **Memory Map Parsing**: Detects available memory regions via BIOS interrupts.
-- **GDT Initialization**: Sets up the Global Descriptor Table for protected mode.
-
-### In Progress
-
-- **Interrupt Descriptor Table (IDT) Setup**: Setting up basic interrupt handling.
-- **Basic Keyboard Input**: Initial support for capturing keystrokes.
+- **GDT Initialization**: Sets up the Global Descriptor Table for protected/unreal mode.
 
 ### Planned Features
 
-- **Task Scheduling**: Basic round-robin task switching.
+- **Interrupt Descriptor Table (IDT) Setup**: Setting up basic interrupt handling.
+- **Basic Keyboard Input**: Initial support for capturing keystrokes.
 - **Filesystem Expansion**: Support for additional filesystems.
-- **More Robust Driver Support**: Additional hardware drivers, such as for storage devices.
 
 ## Installation
 
@@ -29,41 +24,37 @@ Stevia is a lightweight, hobby bootloader written in Assembly and C, designed fo
 
 To build and run Stevia, you will need the following tools installed on your system:
 
-- **Assembler**: NASM for assembling bootloader components.
-- **C Compiler**: GCC (cross-compiler recommended).
-- **Emulator**: Bochs or QEMU for testing.
-- **GNU Make**: For building the project.
-- **Utilities**:
-  - **dd**: For creating raw disk images.
-  - **losetup** (Linux only): For associating loop devices with disk images.
-  - **sfdisk**: For creating DOS disk partitions.
-  - **mkfs.fat**: For formatting partitions as FAT32.
-  - **hdiutil** (macOS only): For attaching disk images.
-  - **newfs\_msdos** (macOS only): For formatting FAT32 partitions.
+- **Assembler**: NASM for assembling bootloader components, you could use a compatible assembler but YMMV.
+- **GNU make**: For building the project.
+- **mtools**: To access the FAT partition
+- **fdisk**: To create disk images and setup partition tables
+- **dosfstools**: FAT32 creation
+- **an x86 Emulator**: Bochs is the primary dev target, but stevia should run on any x86 emulator/hardware with at least a Pentium 3 and 640KiB of memory.
 
 ### Building and Running
 
 1. **Clone the repository**:
+
    ```sh
    git clone https://github.com/Nivirx/stevia.git
    cd stevia
    ```
+
 2. **Build the bootloader and create a bootable disk image**:
+
    ```sh
-   sudo make
+   make
    ```
+
 3. **Run using Bochs**:
+
    ```sh
-   bochs -f bochsrc.txt
+   bochs -q -f bochsrc.txt
    ```
 
 ## Project Goals
 
-Stevia is intended to be a learning tool for those interested in low-level programming, focusing on understanding the basics of how a computer starts up and manages early system resources. Contributions and forks are welcome, especially from those interested in expanding the functionality.
-
-## Contributing
-
-We welcome contributions! Feel free to open issues for bugs or feature requests, and submit pull requests for any improvements. Please ensure that your code follows the existing style and includes appropriate comments.
+Stevia is intended to be a learning tool for those interested in low-level programming, focusing on understanding the basics of how a computer starts up and manages early system resources.
 
 ## License
 
