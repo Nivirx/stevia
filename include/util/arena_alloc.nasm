@@ -50,7 +50,7 @@ arena_align_up:
     mov ax, [bp + 4]      ; x
     mov bx, [bp + 6]      ; a
 
-    or bx, bx
+    test bx, bx
     jz .endp              
 
     ; enforce power-of-two for alignment, return x
