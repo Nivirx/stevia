@@ -54,6 +54,18 @@ arena_align_up:
     jz .endp              
 
     ; enforce power-of-two for alignment, return x
+    ; for example...
+    ; alignment = 0x0010,
+    ;    0x0010 & (0x0010 - 0x0001)
+    ;    0x0010 & 0x000F -> 1_0000000b & 0_11111111b => 0b == zero
+    ;
+    ; alignment = 0x0006
+    ;    0x0006 & (0x0006 - 0x0001)
+    ;    0x0006 & 0x0005 -> 00000110b & 00000101b => 00000100b != 0
+    ;
+    ; i.e any power of 2 has only 1 bit set in binary (2 = 0010b, 4 = 0100b, 8 = 1000b and so on)
+    ;  subtracting 1 from a power of 2 'flips' lower bits ( 7 = 0111b, 15 = 1111b ...) 
+    ;  so 'and'ing a power of two with (itself - 1) will result in none of the bit's being set
     mov cx, bx
     dec cx
     test bx, cx
