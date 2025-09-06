@@ -15,7 +15,7 @@
 
 [BITS 16]
 [ORG 0x0500]                            ; IF YOU CHANGE ORG CHANGE THE SIGN OFFSET AT THE END
-[CPU KATMAI]
+[CPU 686]
 [map all build/stage2.map]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]
