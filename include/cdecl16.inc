@@ -39,11 +39,11 @@
 %endmacro
 %endif
 
-; __CDECL16_ARGS nargs
+; __CDECL16_PROC_ARGS nargs
 ;   Creates %$arg1 .. %$argN as [bp+4], [bp+6], ...
 ;   for use inside of function bodies
-%ifnmacro __CDECL16_ARGS
-%macro __CDECL16_ARGS 1
+%ifnmacro __CDECL16_PROC_ARGS
+%macro __CDECL16_PROC_ARGS 1
     %assign %$__i 1
     %rep %1
         %xdefine %$arg%$__i  [bp + 4 + 2*(%$__i-1)]
@@ -52,10 +52,10 @@
 %endmacro
 %endif
 
-; __CDECL16_PUSH a,b,c  ==> push c / push b / push a
+; __CDECL16_CALL_ARGS a,b,c  ==> push c / push b / push a
 ;   handles pushing values to the stack in the correct order
-%ifnmacro __CDECL16_PUSH
-%macro __CDECL16_PUSH 1-*
+%ifnmacro __CDECL16_CALL_ARGS
+%macro __CDECL16_CALL_ARGS 1-*
     %assign %$__i %0
     %rep %0
         push %[%$__i]
@@ -66,7 +66,7 @@
 
 ; __CDECL16_CALL func, nargs   ; adds sp by nargs*2 after call
 ;   adds up word pushes to restore stack frame
-;   WARNING: if you push a dword it will only count 2, use __CDECL16_CALL_SIZED
+;   WARNING: if you push a dword it will only count 2, use __CDECL16_CALL_ARGS_SIZED
 %ifnmacro __CDECL16_CALL
 %macro __CDECL16_CALL 2
     call %1
@@ -74,11 +74,11 @@
 %endmacro
 %endif
 
-; __CDECL16_CALL_SIZED func, size1[, size2 ...]  ; sizes in BYTES
+; __CDECL16_CALL_ARGS_SIZED func, size1[, size2 ...]  ; sizes in BYTES
 ;   if you *need* to pass dword sized args in 16-bit mode, use this to properly
 ;   count the stack frame to restore later!
-%ifnmacro __CDECL16_CALL_SIZED
-%macro __CDECL16_CALL_SIZED 2-*
+%ifnmacro __CDECL16_CALL_ARGS_SIZED
+%macro __CDECL16_CALL_ARGS_SIZED 2-*
     call %1
     %assign %$__sum 0
     %assign %$__i 2
@@ -111,7 +111,7 @@
 %endmacro
 %endif
 
-%ifnmacro CLOB
+%ifnmacro __CDECL16_CLOB
 ; e.g CLOB ax dx ... inside func entry, then UNCLOB ax dx at all exits
 ; ordering is already taken care of 
 ; i.e if you CLOB ax cx dx then UNCLOB ax cx dx, the unclob is reversed
@@ -125,7 +125,7 @@
 %endif
 
 %ifnmacro __CDECL16_UNCLOB
-%macro UNCLOB 1-*
+%macro __CDECL16_UNCLOB 1-*
     %assign %$i %0
     %rep %0
         pop %[%$i]
