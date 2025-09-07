@@ -135,33 +135,21 @@ main:
     je main.stage2_main
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
-    mov ax, PartTable_t_size
-    push ax                                                 ; len = PartTable_t_size
-    mov ax, word [vbr_part_table_ptr]                       ; src = ptr to vbr partition_table
-    push ax
-    mov ax, partition_table                                 ; dst
-    push ax
-    call kmemcpy                                            ; copy partition table data to .data section in stage2
-    add sp, 0x6
+    ; copy partition table data to .data section in stage2
+    __CDECL16_CALL_ARGS partition_table, word [vbr_part_table_ptr], PartTable_t_size
+    __CDECL16_CALL kmemcpy, 3
 
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)          ; len
-    push ax
-    mov ax, word [vbr_fat32_bpb_ptr]                        ; src            
-    push ax
-    mov ax, fat32_bpb                                       ; dst
-    push ax
-    call kmemcpy                                            ; copy bpb & ebpb to memory
-    add sp, 0x6
+    ; copy bpb & ebpb to memory
+    __CDECL16_CALL_ARGS fat32_bpb, word [vbr_fat32_bpb_ptr], (FAT32_bpb_t_size + FAT32_ebpb_t_size) 
+    __CDECL16_CALL kmemcpy, 3
 
     call SetTextMode
     call disable_cursor_bios
     print_string HelloPrompt_info
     
     ; setup the early heap
-    mov ax, early_heap_state    
-    push ax                             ; address in bss of state structure
-    call arena_init
-    add sp, 0x2
+    __CDECL16_CALL_ARGS early_heap_state
+    __CDECL16_CALL arena_init, 1
 
     ; enable A20 gate
     call EnableA20
