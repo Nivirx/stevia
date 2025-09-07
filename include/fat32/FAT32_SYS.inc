@@ -25,14 +25,9 @@ ALIGN 4, db 0x90
 InitFATDriver:
     __CDECL16_PROC_ENTRY
 .func:
-    mov ax, FAT32_State_t_size
-    push ax                     ; length of fat32_state structure
-    xor ax, ax
-    push ax                     ; init fat32_state with zero
-    mov ax, fat32_state
-    push ax                     ; address of structure
-    call kmemset
-    add sp, 0x6
+
+    __CDECL16_CALL_ARGS fat32_state, 0x0000, FAT32_State_t_size
+    __CDECL16_CALL kmemset, 3
 
 .calc_active_part:
     mov ax, word [partition_offset]            
@@ -111,13 +106,12 @@ SearchFATDIR:
 
     mov bx, fat32_state
     .load_first_dir:
-        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
-        push dword eax          ; cluster
-        mov ax, dir_buffer
-        push ax                 ; offset
-        xor ax, ax
-        push ax                 ; segment
-        call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
+
+        ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
+        push dword [bx + FAT32_State_t.curr_dir_cluster_32]          ; cluster
+        push dir_buffer                                              ; offset
+        push 0x0000                                                  ; segment
+        call ReadFATCluster
         add sp, 0x8
 
         mov si, dir_buffer
@@ -126,10 +120,10 @@ SearchFATDIR:
     .load_next_dir:
         ; if eax >= 0x0FFFFFF8 then there are no more clusters (end of chain)
         ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
-        
-        mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
-        push dword eax
-        call NextCluster        ; uint32_t NextCluster(uint32_t active_cluster);
+
+        ; uint32_t NextCluster(uint32_t active_cluster);
+        push dword [bx + FAT32_State_t.curr_dir_cluster_32]
+        call NextCluster        
         add sp, 0x4
 
         cmp eax, 0x0fff_fff7
@@ -139,16 +133,14 @@ SearchFATDIR:
 
     .load_next_dir_next_OK:
         ; load 512 bytes of directory entries from data sector
-        mov eax, [bx + FAT32_State_t.curr_dir_cluster_32]
-        push dword eax          ; cluster
 
-        mov ax, dir_buffer    
-        push ax                 ; offset
-
-        xor ax, ax
-        push ax                 ; segment
-        call ReadFATCluster     ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
+        ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
+        push dword [bx + FAT32_State_t.curr_dir_cluster_32] ; cluster   
+        push dir_buffer                                     ; offset
+        push 0x0000                                         ; segment
+        call ReadFATCluster     
         add sp, 0x8
+
     .empty_dir_entry:
         ; check for 0x0 in first byte, if true then there are no more files
         ; if true we did not find the file, we should error here
@@ -219,16 +211,10 @@ NextCluster:
     __CDECL16_CALL_ARGS NextFATCluster_info
     __CDECL16_CALL PrintString, 1
 
-    mov ax, FAT32_NextClusterData_t_size
-    push ax                     ; length
-    xor ax, ax
-    push ax                     ; init with zero
-    mov ax, fat32_nc_data
-    push ax                     ; address of structure
-    call kmemset
-    add sp, 0x6
+    __CDECL16_CALL_ARGS fat32_nc_data, 0x0000, FAT32_NextClusterData_t_size
+    __CDECL16_CALL kmemset, 3
 
-    mov edx, dword [bp + 4]
+    mov edx, dword [bp + 4]                      ; active_cluster
     mov si, fat32_nc_data                        ; instead of push/pop and moving the data back
     mov di, fat32_bpb                            ; load si & di then use xchg
     mov bx, fat32_state
@@ -275,10 +261,11 @@ NextCluster:
 ;                         uint32_t lba,
 ;                         uint16_t count, uint16_t drive_num)
 .read_cluster:
-; next_cluster = fat_buffer[entry_offset]
+    ; next_cluster = fat_buffer[entry_offset]
     mov ebx, dword [si + FAT32_NextClusterData_t.entry_offset]
     mov si, fat_buffer
     mov eax, dword [bx+si+0]
+    ; BUG: ???
 .endp:
     __CDECL16_PROC_EXIT
     ret
