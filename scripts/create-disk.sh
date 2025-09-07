@@ -124,8 +124,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         echo "[2/7] Write DOS partition table (single FAT32 LBA @ 2048)"
         "$SF" --no-reread "$disk_img" < /tmp/pt.sfdisk
 
-        echo "[3/7] Make FAT32 filesystem in partition image"
-        "$MKFS" -v -F32 -s 1 -n 'STEVIAFS' "$part_img"
+        # BUG: the default disk img is 256MiB which mkfs.fat wants to create
+        #      a FAT16 FS by default. it needs to be at least 2GiB to to 'lock out'
+        #      FAT16 as an option. Force FAT32 here, might(?) break some things.
+        echo "[3/7] Make FAT filesystem in partition image"
+        "$MKFS" -F32 -v -n 'STEVIAFS' "$part_img"
 
         echo "[4/7] Patch VBR inside partition image (preserve BPB)"
 
