@@ -39,6 +39,80 @@
 %endmacro
 %endif
 
+; __CDECL16_ARGS nargs
+;   Creates %$arg1 .. %$argN as [bp+4], [bp+6], ...
+;   for use inside of function bodies
+;
+%ifnmacro __CDECL16_ARGS
+%macro __CDECL16_ARGS 1
+    %assign %$__i 1
+    %rep %1
+        %xdefine %$arg%$__i  [bp + 4 + 2*(%$__i-1)]
+        %assign  %$__i %$__i + 1
+    %endrep
+%endmacro
+%endif
+
+; __CDECL16_PUSH a,b,c  ==> push c / push b / push a
+;   handles pushing values to the stack in the correct order
+%ifnmacro __CDECL16_PUSH
+%macro __CDECL16_PUSH 1-*
+    %assign %$__i %0
+    %rep %0
+        push %[%$__i]
+        %assign %$__i %$__i - 1
+    %endrep
+%endmacro
+%endif
+
+; __CDECL16_CALL func, nargs   ; adds sp by nargs*2 after call
+;   adds up word pushes to restore stack frame
+;   WARNING: if you push a dword it will only count 2, use __CDECL16_CALL_SIZED
+%ifnmacro __CDECL16_CALL
+%macro __CDECL16_CALL 2
+    call %1
+    add  sp, %2*2
+%endmacro
+%endif
+
+; __CDECL16_CALL_SIZED func, size1[, size2 ...]  ; sizes in BYTES
+;   if you *need* to pass dword sized args in 16-bit mode, use this to properly
+;   count the stack frame to restore later!
+%ifnmacro __CDECL16_CALL_SIZED
+%macro __CDECL16_CALL_SIZED 2-*
+    call %1
+    %assign %$__sum 0
+    %assign %$__i 2
+    %rep %0-1
+        %assign %$__sum %$__sum + %[%$__i]
+        %assign %$__i %$__i + 1
+    %endrep
+    add sp, %$__sum
+%endmacro
+%endif
+
+; __CDECL16_INVOKE func, arg1[, arg2 ...]
+;   pushes args right-to-left, calls, then add sp by (#args)*2
+;   !!! warning for word sized args only !!!
+%ifnmacro __CDECL16_INVOKE
+%macro __CDECL16_INVOKE 1-*
+    %assign %$__argc %0-1
+    %if %$__argc > 0
+        ; push args right-to-left
+        %assign %$__i %0
+        %rep %$__argc
+            push %[%$__i]
+            %assign %$__i %$__i - 1
+        %endrep
+        call %1
+        add  sp, %$__argc*2
+    %else
+        call %1
+    %endif
+%endmacro
+%endif
+
+
 %ifnmacro __CDECL16_CALLER_SAVE
 %macro __CDECL16_CALLER_SAVE 0
     push ax
