@@ -96,28 +96,6 @@
 %endmacro
 %endif
 
-
-; __CDECL16_INVOKE func, arg1[, arg2 ...]
-;   pushes args right-to-left, calls, then add sp by (#args)*2
-;   !!! warning for word sized args only !!!
-%ifnmacro __CDECL16_INVOKE
-%macro __CDECL16_INVOKE 1-*
-    %push __CDECL16_INVOKE
-    %define %$fn %1
-    %assign %$argc %0-1
-    %rotate -1              ; drop function name; %1.. are args
-    %rep %$argc
-        %rotate -1
-        push %1
-    %endrep
-    call %$fn
-    %if %$argc
-        add  sp, %$argc*2
-    %endif
-    %pop
-%endmacro
-%endif
-
 %ifnmacro __CDECL16_CLOB
 ; Save registers in the order listed. Supports "flags" as a pseudo-reg.
 %macro __CDECL16_CLOB 1-*
