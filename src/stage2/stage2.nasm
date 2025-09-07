@@ -34,13 +34,6 @@
 %include "early_mem.inc"
 %include "error_codes.inc"
 
-%macro print_string 1
-    mov ax, %1
-    push ax
-    call PrintString
-    add sp, 0x2
-%endmacro
-
 section .text
 begin_text:
 ; dl = byte boot_drive
@@ -145,38 +138,44 @@ main:
 
     call SetTextMode
     call disable_cursor_bios
-    print_string HelloPrompt_info
-    
+
+    __CDECL16_CALL_ARGS HelloPrompt_info
+    __CDECL16_CALL PrintString, 1
+
     ; setup the early heap
     __CDECL16_CALL_ARGS early_heap_state
-    __CDECL16_CALL arena_init, 1
-
+    
     ; enable A20 gate
     call EnableA20
-    print_string A20_Enabled_OK_info
+    __CDECL16_CALL_ARGS A20_Enabled_OK_info
+    __CDECL16_CALL PrintString, 1
 
     ; get system memory map
     call GetMemoryMap
-    print_string MemoryMap_OK_info
+    __CDECL16_CALL_ARGS MemoryMap_OK_info
+    __CDECL16_CALL PrintString, 1
 
     ; enter unreal mode (enter PM w/ 16 bit code, 32 bit flat memory model & return to real)
     ; ds, es will be set to the 64KiB STAGE2_SEGMENT, fs/gs will be flat/huge memory (4GiB)
     ; use __REFLAT macros to re-flat ds/es for easy transfers to >1MiB
     ; NOTE: if you modify a segment register you will need to re-unreal it
     call EnterUnrealMode
-    print_string UnrealMode_OK_info
+    __CDECL16_CALL_ARGS UnrealMode_OK_info
+    __CDECL16_CALL PrintString, 1
 
     ; FAT Driver setup
     call InitFATDriver
-    print_string InitFATSYS_OK_info
+    __CDECL16_CALL_ARGS InitFATSYS_OK_info
+    __CDECL16_CALL PrintString, 1
 
     ;
     ; Find first cluster of bootable file
     call SearchFATDIR
     push dword eax      ; save first cluster of bootable file
 
-    print_string FileFound_OK_info
-    
+    __CDECL16_CALL_ARGS FileFound_OK_info
+    __CDECL16_CALL PrintString, 1
+
     pop dword eax
     push dword eax      ; print Cluster of boot file
     call PrintDWORD     ; void PrintDWORD(uint32_t dword)

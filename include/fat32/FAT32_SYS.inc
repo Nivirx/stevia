@@ -106,7 +106,9 @@ ALIGN 4, db 0x90
 SearchFATDIR:
     __CDECL16_PROC_ENTRY
 .file_lookup:
-    print_string SearchFATDIR_info
+    __CDECL16_CALL_ARGS SearchFATDIR_info
+    __CDECL16_CALL PrintString, 1
+
     mov bx, fat32_state
     .load_first_dir:
         mov eax, dword [bx + FAT32_State_t.curr_dir_cluster_32]
@@ -176,7 +178,9 @@ SearchFATDIR:
 
     ; TODO: move this to a seperate string search function
     .parse_dir:
-        print_string MaybeFound_Boot_info
+        __CDECL16_CALL_ARGS MaybeFound_Boot_info
+        __CDECL16_CALL PrintString, 1
+        
         .lfn_check:
             ; check for ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID  (0x0F) in offset 11
             ; TODO: going to skip LFN for now, since all valid volumes will have SFN's
@@ -212,7 +216,8 @@ ALIGN 4, db 0x90
 NextCluster:
     __CDECL16_PROC_ENTRY
 .func:
-    print_string NextFATCluster_info
+    __CDECL16_CALL_ARGS NextFATCluster_info
+    __CDECL16_CALL PrintString, 1
 
     mov ax, FAT32_NextClusterData_t_size
     push ax                     ; length
@@ -285,7 +290,8 @@ ALIGN 4, db 0x90
 ReadFATCluster:
     __CDECL16_PROC_ENTRY
 .func:
-    print_string ReadFATCluster_info
+    __CDECL16_CALL_ARGS ReadFATCluster_info
+    __CDECL16_CALL PrintString, 1
 
     mov bx, fat32_bpb
     mov si, fat32_ebpb
