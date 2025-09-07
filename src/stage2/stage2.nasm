@@ -263,7 +263,6 @@ hcf:
 
 ALIGN 4, db 0x90
 EnterUnrealMode:
-    __BOCHS_MAGIC_DEBUG
     __CDECL16_PROC_ENTRY
     cli                                   ; no interrupts
 .func:    
