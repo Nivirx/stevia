@@ -44,11 +44,13 @@
 ;   for use inside of function bodies
 %ifnmacro __CDECL16_PROC_ARGS
 %macro __CDECL16_PROC_ARGS 1
+    %push __CDECL16_PROC_ARGS
     %assign %$__i 1
     %rep %1
         %xdefine %$arg%$__i  [bp + 4 + 2*(%$__i-1)]
         %assign  %$__i %$__i + 1
     %endrep
+    %pop
 %endmacro
 %endif
 
@@ -56,10 +58,9 @@
 ;   handles pushing values to the stack in the correct order
 %ifnmacro __CDECL16_CALL_ARGS
 %macro __CDECL16_CALL_ARGS 1-*
-    %assign %$__i %0
     %rep %0
-        push %[%$__i]
-        %assign %$__i %$__i - 1
+        %rotate -1      ; move the last argument into %1
+        push %1         ; push last, then next-to-last, ...
     %endrep
 %endmacro
 %endif
@@ -79,57 +80,68 @@
 ;   count the stack frame to restore later!
 %ifnmacro __CDECL16_CALL_ARGS_SIZED
 %macro __CDECL16_CALL_ARGS_SIZED 2-*
+    %push __CDECL16_CALL_ARGS_SIZED
     call %1
     %assign %$__sum 0
     %assign %$__i 2
     %rep %0-1
-        %assign %$__sum %$__sum + %[%$__i]
+        %assign %$__sum %$__sum + %[%$__i]   ; sizes may be expressions
         %assign %$__i %$__i + 1
     %endrep
+    %if %$__sum & 1
+        %error "__CDECL16_CALL_ARGS_SIZED: total size is odd; pushes must sum to whole bytes actually pushed (usually even)."
+    %endif
     add sp, %$__sum
+    %pop
 %endmacro
 %endif
+
 
 ; __CDECL16_INVOKE func, arg1[, arg2 ...]
 ;   pushes args right-to-left, calls, then add sp by (#args)*2
 ;   !!! warning for word sized args only !!!
 %ifnmacro __CDECL16_INVOKE
 %macro __CDECL16_INVOKE 1-*
-    %assign %$__argc %0-1
-    %if %$__argc > 0
-        ; push args right-to-left
-        %assign %$__i %0
-        %rep %$__argc
-            push %[%$__i]
-            %assign %$__i %$__i - 1
-        %endrep
-        call %1
-        add  sp, %$__argc*2
-    %else
-        call %1
+    %push __CDECL16_INVOKE
+    %define %$fn %1
+    %assign %$argc %0-1
+    %rotate -1              ; drop function name; %1.. are args
+    %rep %$argc
+        %rotate -1
+        push %1
+    %endrep
+    call %$fn
+    %if %$argc
+        add  sp, %$argc*2
     %endif
+    %pop
 %endmacro
 %endif
 
 %ifnmacro __CDECL16_CLOB
-; e.g CLOB ax dx ... inside func entry, then UNCLOB ax dx at all exits
-; ordering is already taken care of 
-; i.e if you CLOB ax cx dx then UNCLOB ax cx dx, the unclob is reversed
+; Save registers in the order listed. Supports "flags" as a pseudo-reg.
 %macro __CDECL16_CLOB 1-*
-    %assign %$i 1
     %rep %0
-        push %[%$i]
-        %assign %$i %$i+1
+        %ifidni %1, flags
+            pushf
+        %else
+            push %1
+        %endif
+        %rotate 1
     %endrep
 %endmacro
 %endif
 
 %ifnmacro __CDECL16_UNCLOB
+; Restore in reverse order of CLOB. Supports "flags".
 %macro __CDECL16_UNCLOB 1-*
-    %assign %$i %0
     %rep %0
-        pop %[%$i]
-        %assign %$i %$i-1
+        %rotate -1
+        %ifidni %1, flags
+            popf
+        %else
+            pop %1
+        %endif
     %endrep
 %endmacro
 %endif
