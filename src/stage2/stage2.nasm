@@ -274,9 +274,6 @@ EnterUnrealMode:
 
     ; set cs to a pm code segment (0x8) w/ the following
     jmp 0x0008:EnterUnrealMode.set_segs
-    ;db 0xEA                               ; jmp far imm16:imm16
-    ;dw EnterUnrealMode.set_segs           ; error_far_ptr
-    ;dw 0x0008                             ; error_far_seg
 .set_segs:
     mov ax, 0x10                          ; select descriptor 2
     mov ds, ax                            ; 10h = 0001_0000b
@@ -291,7 +288,7 @@ EnterUnrealMode:
     mov eax, cr0
     and eax, ~1                           ; toggle bit 1 of cr0
     mov cr0, eax                          ; back to realmode
-    jmp 0x0000:EnterUnrealMode.endp
+    jmp __STAGE2_SEGMENT:EnterUnrealMode.endp
 .endp:
     sti                                   ; re-enable interupts
 
