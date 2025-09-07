@@ -91,6 +91,9 @@ PrintString:
     mov si, [bp + 4]            ; source string
 .print_L0:
     movzx ax, byte [si]
+    %ifdef __STEVIA_DEV_DEBUG
+    out 0xe9, byte al           ; bochs magic debug port
+    %endif
     push ax
     call PrintCharacter
     add sp, 0x2
