@@ -171,7 +171,10 @@ main:
     call GetMemoryMap
     print_string MemoryMap_OK_info
 
-    ; enter unreal mode (16 bit code, 32 bit flat memory model)
+    ; enter unreal mode (enter PM w/ 16 bit code, 32 bit flat memory model & return to real)
+    ; ds, es will be set to the 64KiB STAGE2_SEGMENT, fs/gs will be flat/huge memory (4GiB)
+    ; use __REFLAT macros to re-flat ds/es for easy transfers to >1MiB
+    ; NOTE: if you modify a segment register you will need to re-unreal it
     call EnterUnrealMode
     print_string UnrealMode_OK_info
 
