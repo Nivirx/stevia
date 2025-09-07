@@ -64,7 +64,7 @@
 ;    Bits 6-7 - 00: HDD activity LED off; any other value is "on"
 ALIGN 4, db 0x90
 EnableA20:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     push ds
     push es
 .a20_check:
@@ -134,7 +134,7 @@ EnableA20:
 .endp:
     pop es
     pop ds
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
     
 %endif

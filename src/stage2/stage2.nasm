@@ -264,7 +264,7 @@ hcf:
 ALIGN 4, db 0x90
 EnterUnrealMode:
     __BOCHS_MAGIC_DEBUG
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     cli                                   ; no interrupts
 .func:    
     lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
@@ -301,7 +301,7 @@ EnterUnrealMode:
     ; to easily access data outside of 64KiB boundries using ds/es addressing
     __TINY_DS_ES
 
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 end_text:
 

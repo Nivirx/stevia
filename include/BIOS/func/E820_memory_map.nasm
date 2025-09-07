@@ -35,7 +35,7 @@ endstruc
 
 ALIGN 4, db 0x90
 GetMemoryMap:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     push es         ; save segment register
 .func:
     mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], 0
@@ -83,11 +83,11 @@ GetMemoryMap:
     ERROR STAGE2_MM_E820_NO_SMAP
 .endp:
     pop es
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 PrintMemoryMap:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov eax, dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
     cmp eax, 0
@@ -106,15 +106,15 @@ PrintMemoryMap:
     ; print_string strformat_buffer
     
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 FormatMemoryMapEntry:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ; create a string buffer somewhere and return address to result string in ax
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 

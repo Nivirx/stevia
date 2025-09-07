@@ -20,7 +20,7 @@
 ALIGN 4, db 0x90
 SetTextMode:
 .prolog:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     pushf
 .func:
     xor ah, ah                  ; Set Video mode BIOS function
@@ -33,14 +33,14 @@ SetTextMode:
     int 0x10                    ; call video interrupt
 .endp:
     popf
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; disables blinking text mode cursor via crtc pokes
 ; 0x3D4/0x3D5 for color, mono at 0x3B4/0x3B5
 ALIGN 4, db 0x90
 disable_cursor_crtc:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov dx, 0x3D4
 	mov al, 0xA	    ; low cursor shape register
@@ -50,13 +50,13 @@ disable_cursor_crtc:
 	mov al, 0x20	; bits 6-7 unused, bit 5 disables the cursor, bits 0-4 control the cursor shape
 	out dx, al
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; disables blinking text mode cursor via BIOS int 10h, ah = 01
 ALIGN 4, db 0x90
 disable_cursor_bios:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     push bx
     mov  ah, 03h      ; read cursor pos & shape
@@ -68,14 +68,14 @@ disable_cursor_bios:
     int  10h
     pop  bx
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; Prints a C-Style string (null terminated) using BIOS vga teletype call
 ; void PrintString(char* buf)
 ALIGN 4, db 0x90
 PrintString:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     mov di, [bp + 4]    ; first arg is char[] 
 .str_len:
     xor cx, cx         ; ECX = 0
@@ -101,14 +101,14 @@ PrintString:
     jcxz PrintString.endp
     jmp PrintString.print_L0    ; Fetch next character from string
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret                         ; Return from procedure
 
 ; Prints a single character
 ; void PrintCharacter(char c);
 ALIGN 4, db 0x90
 PrintCharacter:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov al, byte [bp + 4]       ; AL = character c
     mov ah, 0x0E                ; INT 0x10, AH=0x0E call
@@ -116,7 +116,7 @@ PrintCharacter:
     int 0x10                    ; call video interrupt
                                 ; TODO: check for carry and clear carry before call
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; TODO: fix the prolog, epilog and stack usage to confirm with cdecl16
@@ -124,7 +124,7 @@ PrintCharacter:
 ; void PrintDWORD(uint32_t val);
 ALIGN 4, db 0x90
 PrintDWORD:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func: 
     mov si, IntToHex_table
     mov ebx, 16     ; base-16
@@ -166,7 +166,7 @@ PrintDWORD:
     jmp PrintDWORD.print_stack
 
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 %endif
 %define __INC_VIDEO

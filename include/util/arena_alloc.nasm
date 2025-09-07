@@ -12,7 +12,7 @@ endstruc
 ; void arena_init(ArenaState *a)
 ;
 arena_init:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov ax, word [bp + 4]     ; ptr to state structure
     mov di, ax
@@ -35,7 +35,7 @@ arena_init:
     add sp, 0x6
 
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; size_t align_up(size_t x, size_t a)
@@ -44,7 +44,7 @@ arena_init:
 ; (x + (a-1)) & ~(a-1)
 ; return value in ax
 arena_align_up:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ; if a == 0 return x
     mov ax, [bp + 4]      ; x
@@ -81,7 +81,7 @@ arena_align_up:
 
     mov ax, cx            ; move to ax and return
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; void* arena_alloc(size_t bytes, size_t align)
@@ -89,7 +89,7 @@ arena_align_up:
 ; bp-4 - aligned_ptr 
 ; bp-6 - new_end
 arena_alloc:
-    __CDECL16_ENTRY 0x10
+    __CDECL16_PROC_ENTRY 0x10
 .func:
     ; remove bytes from pool and increment mark to the new cursor location
     ; return a pointer to the begining of  allocated segment
@@ -133,36 +133,36 @@ arena_alloc:
     ; return aligned_ptr
     mov ax, word [bp - 4]
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 .error:
     ERROR STEVIA_DEBUG_ERR
 
 arena_mark:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ; return the current location of the 'cursor' in the allocator
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 arena_reset_to:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ; rewind the arena to a previously marked point
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 arena_reset:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ; reset the entire heap to a fresh state
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 %endif

@@ -23,7 +23,7 @@
 ; returns: none
 ALIGN 4, db 0x90
 InitFATDriver:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov ax, FAT32_State_t_size
     push ax                     ; length of fat32_state structure
@@ -70,14 +70,14 @@ InitFATDriver:
     mov eax, dword [bx + FAT32_ebpb_t.root_clus_dword]
     mov dword [di + FAT32_State_t.curr_dir_cluster_32], eax
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 .error:
     ERROR STAGE2_FAT32_INIT_CF
 
 ALIGN 4, db 0x90
 FSInfoPrinter:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     ;info we want to print to validate we are loading stuff from the disk correctly
     ; boot_drive # (i.e 0x80)
@@ -88,7 +88,7 @@ FSInfoPrinter:
     ; print entire FAT32 state
     ;
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 .error:
     ERROR STAGE2_ERROR_INFOPRINTER
@@ -104,7 +104,7 @@ FSInfoPrinter:
 ; uint32_t SearchFATDIR(uint8_t* SFN);
 ALIGN 4, db 0x90
 SearchFATDIR:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .file_lookup:
     print_string SearchFATDIR_info
     mov bx, fat32_state
@@ -201,7 +201,7 @@ SearchFATDIR:
             mov ax, [si + FAT32_SFN_t.cluster_16_low]
             ; eax == first cluster of file
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; BUG: this function needs review
@@ -210,7 +210,7 @@ SearchFATDIR:
 ; if eax == 0x0FFFFFF7 then this is a cluster that is marked as bad
 ALIGN 4, db 0x90
 NextCluster:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     print_string NextFATCluster_info
 
@@ -275,7 +275,7 @@ NextCluster:
     mov si, fat_buffer
     mov eax, dword [bx+si+0]
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 .error_cfdivz:
     ERROR STAGE2_FAT32_NCLUS_CFDIVZ
@@ -283,7 +283,7 @@ NextCluster:
 ; uint8_t ReadFATCluster(uint16_t seg, uint16_t offset, uint32_t cluster)
 ALIGN 4, db 0x90
 ReadFATCluster:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     print_string ReadFATCluster_info
 
@@ -318,7 +318,7 @@ ReadFATCluster:
     call read_disk_raw  
     add sp, 0xC
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 .error:
     ERROR STAGE2_FAT32_CLS2LBA_CF

@@ -20,7 +20,7 @@
 ; not overlap safe, only for
 ALIGN 4, db 0x90
 kmemcpy5:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
     push ds
     push es
 .setup_segments:
@@ -41,7 +41,7 @@ kmemcpy5:
     pop es
     pop ds
 .endf:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 %define __INC_KMEMCPY5_FUNC

@@ -13,8 +13,8 @@
 ;     You should have received a copy of the GNU General Public License
 ;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-%ifnmacro __CDECL16_ENTRY
-%macro __CDECL16_ENTRY 0-1
+%ifnmacro __CDECL16_PROC_ENTRY
+%macro __CDECL16_PROC_ENTRY 0-1
     push bp
     mov bp, sp
 
@@ -28,8 +28,8 @@
 %endmacro
 %endif
 
-%ifnmacro __CDECL16_EXIT
-%macro __CDECL16_EXIT 0
+%ifnmacro __CDECL16_PROC_EXIT
+%macro __CDECL16_PROC_EXIT 0
     pop bx
     pop di
     pop si
@@ -42,7 +42,6 @@
 ; __CDECL16_ARGS nargs
 ;   Creates %$arg1 .. %$argN as [bp+4], [bp+6], ...
 ;   for use inside of function bodies
-;
 %ifnmacro __CDECL16_ARGS
 %macro __CDECL16_ARGS 1
     %assign %$__i 1
@@ -112,20 +111,26 @@
 %endmacro
 %endif
 
-
-%ifnmacro __CDECL16_CALLER_SAVE
-%macro __CDECL16_CALLER_SAVE 0
-    push ax
-    push cx
-    push dx
+%ifnmacro CLOB
+; e.g CLOB ax dx ... inside func entry, then UNCLOB ax dx at all exits
+; ordering is already taken care of 
+; i.e if you CLOB ax cx dx then UNCLOB ax cx dx, the unclob is reversed
+%macro __CDECL16_CLOB 1-*
+    %assign %$i 1
+    %rep %0
+        push %[%$i]
+        %assign %$i %$i+1
+    %endrep
 %endmacro
 %endif
 
-%ifnmacro __CDECL16_CALLER_RESTORE
-%macro __CDECL16_CALLER_RESTORE 0
-    pop dx
-    pop cx
-    pop ax
+%ifnmacro __CDECL16_UNCLOB
+%macro UNCLOB 1-*
+    %assign %$i %0
+    %rep %0
+        pop %[%$i]
+        %assign %$i %$i-1
+    %endrep
 %endmacro
 %endif
 

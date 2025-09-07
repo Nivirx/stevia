@@ -19,7 +19,7 @@
 ; word kmemset_byte(word segment, word dst, byte val, word len);
 ALIGN 4, db 0x90
 kmemset4:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .setup_segment:
     push es
     mov ax, [bp + 4]
@@ -35,7 +35,7 @@ kmemset4:
 .restore_segments:
     pop es
 .endf:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 %endif

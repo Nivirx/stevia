@@ -76,7 +76,7 @@ endstruc
 ;                         uint16_t count, uint8_t drive_num)
 ALIGN 4, db 0x90
 read_disk_raw:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:                        
     mov ax, LBAPkt_t_size
     push ax                 ; len
@@ -123,7 +123,7 @@ read_disk_raw:
     ERROR STAGE2_MBR_DISK_READ_ERROR
     %endif
 .endf:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 %endif

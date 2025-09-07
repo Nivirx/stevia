@@ -19,7 +19,7 @@
 ; void* kmemset_byte(void* dst, uint8_t val, uint16_t len);
 ALIGN 4, db 0x90
 kmemset:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
  .func:
     mov     cx, [bp + 8]        ; uint16_t len
     mov     al, byte [bp + 6]   ; uint8_t val
@@ -29,14 +29,14 @@ kmemset:
     rep     stosb
     mov     ax, di         ; return pointer to dest + len (last elem of dest)
 .endp:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 ; uint8_t* kmemset(uint16_t* dest, uint16_t* src, uint16_t len);
 ; not overlap safe
 ALIGN 4, db 0x90
 kmemcpy:
-    __CDECL16_ENTRY
+    __CDECL16_PROC_ENTRY
 .func:
     mov cx, [bp + 8]        ; len
     mov si, [bp + 6]        ; src
@@ -46,7 +46,7 @@ kmemcpy:
     rep movsb
     mov ax, di              ; return pointer to dest
 .endf:
-    __CDECL16_EXIT
+    __CDECL16_PROC_EXIT
     ret
 
 %endif
