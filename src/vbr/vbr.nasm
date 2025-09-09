@@ -72,7 +72,7 @@ init:
     cld
     rep stosb                          
     
-    sub sp, 0x20                    ; local varible space (32 bytes)
+    sub sp, 0x10                    ; local varible space (32 bytes)
     push bp
 
     sti                             ; all done with inital setup and relocation, reenable interupts
@@ -100,23 +100,17 @@ main:
     mov word [bp - 4], si                 ; part_offset
     mov word [bp - 6], bx                 ; partition_table
 
-.load_fs_data:
-    mov ax, PartTable_t_size                           ; count=
-    push ax                                             
-    mov ax, [bp - 6]                                   ; src= ptr partition_table
-    push ax
-    mov ax, partition_table                            ; dst=      
-    push ax
-    call kmemcpy                                       ; copy partition table data
+.load_fs_data:                      
+    push PartTable_t_size                              ; count=                                    
+    push word [bp - 6]                                 ; src= ptr partition_table                                
+    push partition_table                               ; dst=
+    call kmemcpy                                       ; copy partition table data to bss
     add sp, 0x6
-
-    mov ax, (FAT32_bpb_t_size + FAT32_ebpb_t_size)     ; size in byte, should be 90 bytes
-    push ax
-    mov ax, __ENTRY                                    
-    push ax
-    mov ax, fat32_bpb                                  ; 
-    push ax
-    call kmemcpy                                       ; copy bpb & ebpb to memory
+     
+    push (FAT32_bpb_t_size + FAT32_ebpb_t_size)        ; size in byte, should be 90 bytes                                     
+    push __ENTRY                                       ; src
+    push fat32_bpb                                     ; dst
+    call kmemcpy                                       ; copy bpb & ebpb to bss
     add sp, 0x6
 
 .check_FAT_size:                     ; we only support a very specific setup of FAT32
@@ -129,17 +123,13 @@ main:
     movzx ax, byte [bp - 2]
     push ax                                            ; drive_num
 
-    mov ax, STAGE2_SECTOR_COUNT
-    push ax                                            ; count
+    push STAGE2_SECTOR_COUNT                           ; count
 
     mov dword eax, 0x1
     push dword eax                                     ; lba
 
-    mov ax, STAGE2_ENTRY
-    push ax                                            ; offset
-
-    xor ax, ax
-    push ax                                            ; segment = 0
+    push STAGE2_ENTRY                                  ; offset
+    push 0x00                                          ; segment = 0
 
     ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
     ;                         uint32_t lba,
@@ -166,6 +156,7 @@ times (510 - ($ - $$)) nop     ; Fill the rest of sector with nop
 
 BootSig:
     dw 0xAA55                    ; Add boot signature at the end of bootloader
+; !!! END VBR !!!
 
 section .bss follows=.text
 begin_bss:
@@ -178,13 +169,10 @@ fat32_bpb resb FAT32_bpb_t_size
 fat32_ebpb resb FAT32_ebpb_t_size
 
 align 16, resb 1
-fat32_nc_data resb 16
-
-align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb 512                  ; 512b stack early on
+stack_bottom resb (512 - 16)                  ; 512b stack early on
 stack_top:
-vbr_redzone resb 32
+vbr_redzone resb 16
 end_bss:
