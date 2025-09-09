@@ -27,7 +27,25 @@ GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HA
 NASMFLAGS   := -Wall -f bin -i$(INCDIR)/ $(GIT_NASM_DEFINES)
 
 QEMU        ?= qemu-system-i386
-QEMU_OPTS   ?= -L ./bin/ -bios bios.bin -cpu pentium3 -m 64 -S -s -monitor stdio -nic none
+QEMU_ARGS := \
+    -M pc-i440fx-8.2,accel=tcg \
+    -cpu pentium3 \
+    -m 64M \
+    -rtc base=localtime \
+    -boot c \
+    -vga std \
+    -display gtk,gl=off \
+    -device e1000,netdev=n0,mac=52:54:00:12:34:56 \
+    -netdev user,id=n0 \
+    -device piix3-usb-uhci \
+    -device usb-ohci,id=ohci0 \
+    -device usb-ehci,id=ehci0 \
+    -device pcspk \
+    -parallel null \
+    -serial null -serial none -serial none -serial none \
+    -chardev file,id=dbg,path=bochs-e9.log,append=on \
+    -device isa-debugcon,iobase=0xe9,chardev=dbg \
+    -msg timestamp=on
 
 MBR_SRCS 	  := $(wildcard src/mbr/*.nasm)
 VBR_SRCS 	  := $(wildcard src/vbr/*.nasm)
@@ -90,7 +108,7 @@ imgz: $(IMGZ)
 # Helpers
 
 run: $(IMG)
-	@$(QEMU) $(QEMU_OPTS) -hda $(IMG)
+	@$(QEMU) $(QEMU_OPTS) -drive file=$(IMG),if=ide,index=0,media=disk,format=raw \
 
 run_bochs: $(IMG)
 	@bochs -q
