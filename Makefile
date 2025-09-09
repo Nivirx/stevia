@@ -75,7 +75,7 @@ $(DEP_DIR):
 
 # Disk image's
 
-$(IMG): $(ALL_BINS) | $(@D) scripts/create-disk.sh
+$(IMG): $(ALL_BINS) | scripts/create-disk.sh
 	@scripts/create-disk.sh
 
 $(IMGZ): $(IMG)
