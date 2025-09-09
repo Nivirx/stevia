@@ -99,7 +99,6 @@ init:
 ; ###############
 
 %include "partition_table.inc"
-%include "fat32/bpb_offset_bx.inc"
 %include "fat32/fat32_structures.inc"
 ;%include 'fat32/FAT32_SYS.inc'
 
