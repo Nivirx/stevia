@@ -57,7 +57,7 @@ init:
     cld
     rep stosb                         ; zero bss section
 
-    sub sp, 0x20                    ; local varible space (32 bytes)
+    sub sp, 0x10                    ; local varible space (32 bytes)
     push bp                         ; setup top of stack frame
 
     xor cx, cx
@@ -120,19 +120,14 @@ main:
         mov word [bp - 4], ax                   ; update part_offset
     .read_data:
         movzx ax, byte [bp - 2]
-        push ax                                            ; drive_num
-
-        mov ax, 0x1
-        push ax                                            ; count
+        push ax                                            ; drive_num (2)
+        push 0x01                                          ; count (2)
 
         mov dword eax, dword [bx + PartEntry_t.lba_start]
-        push dword eax                                     ; lba
+        push dword eax                                     ; lba (4)
 
-        mov ax, VBR_ENTRY
-        push ax                                            ; offset = 0x7c00
-
-        xor ax, ax
-        push ax                                            ; segment = 0
+        push word VBR_ENTRY                                ; offset = 0x7c00 (2)
+        push 0x00                                          ; segment = 0 (2)
 
         ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
         ;                         uint32_t lba,
@@ -142,14 +137,11 @@ main:
     .goto_vbr:
         cmp word [VBR_ENTRY + 0x1FE], 0xAA55
         je main.sig_ok
-        ERROR MBR_ERROR_NO_VBR_SIG                        ; no signature present
-    .sig_ok:
-        mov ax, PartTable_t_size                
-        push ax
-        mov ax, DiskSig                         ; start of partition table
-        push ax
-        mov ax, partition_table                 
-        push ax
+        ERROR MBR_ERROR_NO_VBR_SIG              ; no signature present
+    .sig_ok:  
+        push PartTable_t_size                   ; len       
+        push DiskSig                            ; src -> start of partition table
+        push partition_table                    ; dst -> addr in bss 
         call kmemcpy                            ; copy partition table to bss
         add sp, 0x6
         
@@ -195,7 +187,7 @@ align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb 512                  ; 512 byte stack early on
+stack_bottom resb 512 - 16                 ; 512 byte stack early on
 stack_top:
-mbr_redzone resb 32
+mbr_redzone resb 16
 end_bss:
