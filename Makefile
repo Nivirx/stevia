@@ -13,7 +13,21 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-include := './include'
+INCDIR := include
+BUILD_DIR := build
+IMG := $(BUILD_DIR)/disk.img
+IMGZ := $(BUILD_DIR)/disk.img.gz
+
+# Get current Git version (tag) and hash
+GIT_VERSION := $(shell git describe --tags)
+GIT_HASH := $(shell git rev-parse HEAD)
+GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HASH)"'
+
+NASMFLAGS   := -Wall -f bin -i$(INCDIR)/ $(GIT_NASM_DEFINES)
+
+QEMU        ?= qemu-system-i386
+QEMU_OPTS   ?= -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
+.PHONY: all mbr vbr stage2 boottest clean run run_qemu run_bochs img imgz help
 
 mbr_source_files := $(wildcard src/mbr/*.nasm)
 vbr_source_files := $(wildcard src/vbr/*.nasm)
@@ -25,62 +39,49 @@ vbr_binary_files := $(patsubst src/vbr/%.nasm, build/%.bin, $(vbr_source_files))
 stage2_binary_files := $(patsubst src/stage2/%.nasm, build/%.bin, $(stage2_source_files))
 boottest_binary_files := $(patsubst src/miniboot32/%.nasm, build/%.bin, $(boottest_source_files))
 
-build_dir := 'build'
-
-# Get current Git version (tag) and hash
-GIT_VERSION := $(shell git describe --tags)
-GIT_HASH := $(shell git rev-parse HEAD)
-GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HASH)"'
-
-iso := 'build/disk.img'
-isoz := 'build/output/disk.img.gz'
-
-qemu_args := -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
-.PHONY: all mbr vbr stage2 boottest clean run run_bochs iso isoz
-
-all: $(iso) $(isoz) $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files)
+all: $(IMG) $(IMGZ) $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files)
 mbr: $(mbr_binary_files)
 vbr: $(vbr_binary_files)
 stage2: $(stage2_binary_files)
 boottest: $(boottest_binary_files)
 
 clean:
-	@rm -v $(build_dir)/*.bin
-	@rm -v $(build_dir)/*.map
-	@rm -v $(build_dir)/*.img
-	@rm -v $(build_dir)/output/*.img.gz
-	@rm -v $(build_dir)/output/*.tar.gz
+	@rm -v $(BUILD_DIR)/*.bin
+	@rm -v $(BUILD_DIR)/*.map
+	@rm -v $(BUILD_DIR)/*.img
+	@rm -v $(BUILD_DIR)/output/*.img.gz
+	@rm -v $(BUILD_DIR)/output/*.tar.gz
 
-run: $(iso)
-	@sudo qemu-system-i386 $(qemu_args) -hda $(iso)
+run: $(IMG)
+	@$(QEMU) $(QEMU_OPTS) -hda $(IMG)
 
-run_bochs: $(iso)
+run_bochs: $(IMG)
 	@bochs -q
 
-iso: $(iso)
-	@file $(iso)
+img: $(IMG)
+	@file $(IMG)
 
-isoz: $(isoz)
-	@file $(isoz)
+imgz: $(IMGZ)
+	@file $(IMGZ)
 
 build/%.bin: src/mbr/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
+	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/vbr/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
+	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/stage2/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
+	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
 
 build/%.bin: src/miniboot32/%.nasm
 	@mkdir -p $(shell dirname $@)
-	@nasm -i$(include) -Wall -f bin $(GIT_NASM_DEFINES) $< -o $@
+	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
 
-$(iso): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
+$(IMG): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
 	@scripts/create-disk.sh
 
-$(isoz): $(iso)
-	@gzip -9kc $(iso) > $(isoz)
+$(IMGZ): $(IMG)
+	@gzip -9kc $(IMG) > $(IMGZ)
