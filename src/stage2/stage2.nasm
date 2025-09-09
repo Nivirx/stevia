@@ -98,7 +98,10 @@ init:
 ; FAT32 Driver
 ; ###############
 
-%include 'fat32/FAT32_SYS.inc'
+%include "partition_table.inc"
+%include "fat32/bpb_offset_bx.inc"
+%include "fat32/fat32_structures.inc"
+;%include 'fat32/FAT32_SYS.inc'
 
 ; ###############
 ; BIOS functions
@@ -164,22 +167,22 @@ main:
     __CDECL16_CALL PrintString, 1
 
     ; FAT Driver setup
-    call InitFATDriver
-    __CDECL16_CALL_ARGS InitFATSYS_OK_info
-    __CDECL16_CALL PrintString, 1
+    ;call InitFATDriver
+    ;__CDECL16_CALL_ARGS InitFATSYS_OK_info
+    ;__CDECL16_CALL PrintString, 1
 
     ;
     ; Find first cluster of bootable file
-    call SearchFATDIR
-    push dword eax      ; save first cluster of bootable file
+    ;call SearchFATDIR
+    ;push dword eax      ; save first cluster of bootable file
 
-    __CDECL16_CALL_ARGS FileFound_OK_info
-    __CDECL16_CALL PrintString, 1
+    ;__CDECL16_CALL_ARGS FileFound_OK_info
+    ;__CDECL16_CALL PrintString, 1
 
-    pop dword eax
-    push dword eax      ; print Cluster of boot file
-    call PrintDWORD     ; void PrintDWORD(uint32_t dword)
-    add sp, 0x4
+    ;pop dword eax
+    ;push dword eax      ; print Cluster of boot file
+    ;call PrintDWORD     ; void PrintDWORD(uint32_t dword)
+    ;add sp, 0x4
 
     ; TODO: using first cluster information, start loading the kernel to memory
     ; TODO: going to need an elf parser,  some unreal mode file buffer functions to move the data
