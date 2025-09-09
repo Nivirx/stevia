@@ -31,7 +31,6 @@
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "early_mem.inc"
 %include "error_codes.inc"
 
 section .text

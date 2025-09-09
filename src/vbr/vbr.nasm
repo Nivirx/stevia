@@ -41,7 +41,6 @@ times 54 db 0x00
 %include "cdecl16.inc"
 %include "entry.inc"
 %include "config.inc"
-%include "early_mem.inc"
 %include "error_codes.inc"
 %include "partition_table.inc"
 %include "fat32/fat32_structures.inc"
