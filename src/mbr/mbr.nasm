@@ -33,7 +33,6 @@ nop
 %include "config.inc"
 %include "error_codes.inc"
 %include "partition_table.inc"
-%include "fat32/fat32_structures.inc"
 
 %undef __STEVIA_DEV_DEBUG
 
