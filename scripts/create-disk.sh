@@ -21,10 +21,10 @@ if [ $(id -u) = 0 ]; then
 fi
 
 # paths to bootcode
-mbr_file=build/mbr.bin
-vbr_file=build/vbr.bin
-stage2_file=build/stage2.bin
-boottest_file=build/BOOTi686.bin
+mbr_file=build/mbr/mbr.bin
+vbr_file=build/vbr/vbr.bin
+stage2_file=build/stage2/stage2.bin
+boottest_file=build/miniboot32/BOOTi686.bin
 
 # Disk creation options
 disk_img=build/disk.img
@@ -161,9 +161,14 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         dd if="$part_img" of="$disk_img" bs=$disk_sector_size seek=$part_start conv=notrunc
 
         echo " *** Outputing disk images will be in ./build/output/* *** "
+        
+        if [ ! -d ./build/output ]; then
+            echo "./build/output does not exist. creating"
+            mkdir -p ./build/output
+        fi
         gzip -9c "$disk_img" > "$disk_img_final"
         gzip -9c "$part_img" > "$part_img_final"
-        tar caf "$artifacts_archive" build/*.bin build/*.map
+        tar caf "$artifacts_archive" --exclude ./build/output ./build/ 
 else
         # Unknown.
         echo "Unknown OS type! Supported build hosts systems are GNU/Linux (& WSL)"

@@ -17,46 +17,69 @@ INCDIR := include
 BUILD_DIR := build
 IMG := $(BUILD_DIR)/disk.img
 IMGZ := $(BUILD_DIR)/disk.img.gz
+DEP_DIR     := $(BUILD_DIR)/deps
 
 # Get current Git version (tag) and hash
-GIT_VERSION := $(shell git describe --tags)
-GIT_HASH := $(shell git rev-parse HEAD)
+GIT_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)
+GIT_HASH := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
 GIT_NASM_DEFINES := -D __GIT_VER__='"$(GIT_VERSION)"' -D __GIT_HASH__='"$(GIT_HASH)"'
 
 NASMFLAGS   := -Wall -f bin -i$(INCDIR)/ $(GIT_NASM_DEFINES)
 
 QEMU        ?= qemu-system-i386
-QEMU_OPTS   ?= -L ./bin/ -bios bios.bin -cpu pentium3 -m 128 -S -s -monitor stdio -nic none
+QEMU_OPTS   ?= -L ./bin/ -bios bios.bin -cpu pentium3 -m 64 -S -s -monitor stdio -nic none
+
+MBR_SRCS 	  := $(wildcard src/mbr/*.nasm)
+VBR_SRCS 	  := $(wildcard src/vbr/*.nasm)
+STAGE2_SRCS   := $(wildcard src/stage2/*.nasm)
+BOOTTEST_SRCS := $(wildcard src/miniboot32/*.nasm)
+
+MBR_BINS 	  := $(patsubst src/mbr/%.nasm, $(BUILD_DIR)/mbr/%.bin, $(MBR_SRCS))
+VBR_BINS 	  := $(patsubst src/vbr/%.nasm, $(BUILD_DIR)/vbr/%.bin, $(VBR_SRCS))
+STAGE2_BINS   := $(patsubst src/stage2/%.nasm, $(BUILD_DIR)/stage2/%.bin, $(STAGE2_SRCS))
+BOOTTEST_BINS := $(patsubst src/miniboot32/%.nasm, $(BUILD_DIR)/miniboot32/%.bin, $(BOOTTEST_SRCS))
+
+ALL_BINS	  := $(MBR_BINS) $(VBR_BINS) $(STAGE2_BINS) $(BOOTTEST_BINS)
+
+.DEFAULT_GOAL := all
+.DELETE_ON_ERROR:
+
 .PHONY: all mbr vbr stage2 boottest clean run run_qemu run_bochs img imgz help
+all: $(IMG) $(IMGZ) $(ALL_BINS)
+mbr: $(MBR_BINS)
+vbr: $(VBR_BINS)
+stage2: $(STAGE2_BINS)
+boottest: $(BOOTTEST_BINS)
 
-mbr_source_files := $(wildcard src/mbr/*.nasm)
-vbr_source_files := $(wildcard src/vbr/*.nasm)
-stage2_source_files := $(wildcard src/stage2/*.nasm)
-boottest_source_files := $(wildcard src/miniboot32/*.nasm)
+# Build Rules
 
-mbr_binary_files := $(patsubst src/mbr/%.nasm, build/%.bin, $(mbr_source_files))
-vbr_binary_files := $(patsubst src/vbr/%.nasm, build/%.bin, $(vbr_source_files))
-stage2_binary_files := $(patsubst src/stage2/%.nasm, build/%.bin, $(stage2_source_files))
-boottest_binary_files := $(patsubst src/miniboot32/%.nasm, build/%.bin, $(boottest_source_files))
+$(BUILD_DIR)/mbr/%.bin: src/mbr/%.nasm | $(DEP_DIR)
+	@mkdir -p $(@D)
+	@nasm $(NASMFLAGS) -MD $(DEP_DIR)/$*.d -MT $@ $< -o $@
 
-all: $(IMG) $(IMGZ) $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files)
-mbr: $(mbr_binary_files)
-vbr: $(vbr_binary_files)
-stage2: $(stage2_binary_files)
-boottest: $(boottest_binary_files)
+$(BUILD_DIR)/vbr/%.bin: src/vbr/%.nasm | $(DEP_DIR)
+	@mkdir -p $(@D)
+	@nasm $(NASMFLAGS) -MD $(DEP_DIR)/$*.d -MT $@ $< -o $@
 
-clean:
-	@rm -v $(BUILD_DIR)/*.bin
-	@rm -v $(BUILD_DIR)/*.map
-	@rm -v $(BUILD_DIR)/*.img
-	@rm -v $(BUILD_DIR)/output/*.img.gz
-	@rm -v $(BUILD_DIR)/output/*.tar.gz
+$(BUILD_DIR)/stage2/%.bin: src/stage2/%.nasm | $(DEP_DIR)
+	@mkdir -p $(@D)
+	@nasm $(NASMFLAGS) -MD $(DEP_DIR)/$*.d -MT $@ $< -o $@
 
-run: $(IMG)
-	@$(QEMU) $(QEMU_OPTS) -hda $(IMG)
+$(BUILD_DIR)/miniboot32/%.bin: src/miniboot32/%.nasm | $(DEP_DIR)
+	@mkdir -p $(@D)
+	@nasm $(NASMFLAGS) -MD $(DEP_DIR)/$*.d -MT $@ $< -o $@
 
-run_bochs: $(IMG)
-	@bochs -q
+
+$(DEP_DIR):
+	@mkdir -p $@
+
+# Disk image's
+
+$(IMG): $(ALL_BINS) | $(@D) scripts/create-disk.sh
+	@scripts/create-disk.sh
+
+$(IMGZ): $(IMG)
+	@gzip -9kc $(IMG) > $(IMGZ)
 
 img: $(IMG)
 	@file $(IMG)
@@ -64,24 +87,19 @@ img: $(IMG)
 imgz: $(IMGZ)
 	@file $(IMGZ)
 
-build/%.bin: src/mbr/%.nasm
-	@mkdir -p $(shell dirname $@)
-	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
+# Helpers
 
-build/%.bin: src/vbr/%.nasm
-	@mkdir -p $(shell dirname $@)
-	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
+run: $(IMG)
+	@$(QEMU) $(QEMU_OPTS) -hda $(IMG)
 
-build/%.bin: src/stage2/%.nasm
-	@mkdir -p $(shell dirname $@)
-	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
+run_bochs: $(IMG)
+	@bochs -q
 
-build/%.bin: src/miniboot32/%.nasm
-	@mkdir -p $(shell dirname $@)
-	@nasm $(NASMFLAGS) $(GIT_NASM_DEFINES) $< -o $@
+clean:
+	@$(RM) -rv $(BUILD_DIR)/
 
-$(IMG): $(mbr_binary_files) $(vbr_binary_files) $(stage2_binary_files) $(boottest_binary_files)
-	@scripts/create-disk.sh
+help:
+	@awk '/^[A-Za-z0-9_%-]+:/{print $$1}' $(MAKEFILE_LIST) | sed 's/:$$//' | sort -u
 
-$(IMGZ): $(IMG)
-	@gzip -9kc $(IMG) > $(IMGZ)
+# Include header deps
+-include $(wildcard $(DEP_DIR)/*.d)
