@@ -430,11 +430,11 @@ BUILD_GIT_HASH:
     db __GIT_HASH__, 00h
 end_data:
 
-%assign bytes_remaining ((MAX_STAGE2_BYTES - 4) - (($ - $$) + (end_text - begin_text)))
+%assign bytes_remaining ((MAX_STAGE2_BYTES - 512) - (($ - $$) + (end_text - begin_text)))
 %warning STAGE2 has bytes_remaining bytes remaining for code/data (MAX: MAX_STAGE2_BYTES)
 
 ; section start location needs to be a 'critical expression'
-; i.e resolvable at build time, we are setting 0x7E00 as the offset since
+; i.e resolvable at build time, we are setting 0x0500 as the offset since
 section .sign start=((MAX_STAGE2_BYTES - 512) + 0x0500)
 times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
 STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
