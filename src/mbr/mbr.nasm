@@ -14,7 +14,7 @@
 ;     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [BITS 16]
-[ORG 0x8C00]
+[ORG 0x6C00]
 [CPU KATMAI]
 [WARNING -reloc-abs-byte]
 [WARNING -reloc-abs-word]                   ; Yes, we use absolute addresses. surpress these warnings.
@@ -36,6 +36,7 @@ nop
 
 %undef __STEVIA_DEV_DEBUG
 
+; BIOS will load 1st sector of boot drive to 0x7c00, init and relocate
 ALIGN 4
 init:
     cli                             ; We do not want to be interrupted
@@ -64,7 +65,7 @@ init:
     mov ch, 0x02                    ; 0x0200 in cx
     mov si, 0x7C00                  ; Current MBR Address (loaded here by BIOS)
     mov di, MBR_ENTRY               ; New MBR Address (our new relocation address)
-    rep movsb                       ; copy 512 bytes from 0x0000:7c00 to 0x0000:MBR_ENTRY (7A00 as of writing)
+    rep movsb                       ; copy 512 bytes from 0x0000:7c00 to 0x0000:MBR_ENTRY (6C00 as of writing)
 
     sti
 
@@ -126,7 +127,7 @@ main:
         mov dword eax, dword [bx + PartEntry_t.lba_start]
         push dword eax                                     ; lba (4)
 
-        push word VBR_ENTRY                                ; offset = 0x7c00 (2)
+        push word 0x7C00                                   ; offset = 0x7c00 (2)
         push 0x00                                          ; segment = 0 (2)
 
         ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
@@ -176,7 +177,7 @@ PartEntry4:
     times 16 db 0x00
 BootSig:
     dw 0xAA55                    ; Add boot signature at the end of bootloader
-
+; !!! end of MBR !!!
 section .bss follows=.text
 begin_bss:
 

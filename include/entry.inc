@@ -15,7 +15,7 @@
 
 %ifndef __INC_ENTRY
 
-%define MBR_ENTRY                    0x8C00
+%define MBR_ENTRY                    0x6C00
 %define VBR_ENTRY                    0x7C00
 %define STAGE2_ENTRY                 0x0500
 
