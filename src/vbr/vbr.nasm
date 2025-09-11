@@ -136,6 +136,7 @@ main:
     call read_disk_raw
     add sp, 0xC
 .enter_stage2:
+    ; TODO: review what we pass to stage2, do we need to do this?
     mov dl, byte [bp - 2]               ; byte boot_drive
     mov ax, word [bp - 4]               ; word part_offset
     mov si, partition_table             ; ptr partition_table
