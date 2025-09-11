@@ -108,7 +108,7 @@ imgz: $(IMGZ)
 # Helpers
 
 run: $(IMG)
-	@$(QEMU) $(QEMU_OPTS) -drive file=$(IMG),if=ide,index=0,media=disk,format=raw \
+	@$(QEMU) $(QEMU_ARGS) -drive file=$(IMG),if=ide,index=0,media=disk,format=raw \
 
 run_bochs: $(IMG)
 	@bochs -q
