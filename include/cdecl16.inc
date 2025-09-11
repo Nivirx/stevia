@@ -42,6 +42,7 @@
 ; __CDECL16_PROC_ARGS nargs
 ;   Creates %$arg1 .. %$argN as [bp+4], [bp+6], ...
 ;   for use inside of function bodies
+; BUG: still needs to be tested
 %ifnmacro __CDECL16_PROC_ARGS
 %macro __CDECL16_PROC_ARGS 1
     %push __CDECL16_PROC_ARGS
@@ -78,6 +79,7 @@
 ; __CDECL16_CALL_ARGS_SIZED func, size1[, size2 ...]  ; sizes in BYTES
 ;   if you *need* to pass dword sized args in 16-bit mode, use this to properly
 ;   count the stack frame to restore later!
+; BUG: still needs to be tested
 %ifnmacro __CDECL16_CALL_ARGS_SIZED
 %macro __CDECL16_CALL_ARGS_SIZED 2-*
     %push __CDECL16_CALL_ARGS_SIZED
@@ -124,13 +126,21 @@
 %endmacro
 %endif
 
+;
+; Only setup the minimum stack frame
+; unlike the above, everything is caller save
+;
 %ifnmacro __FASTCALL16_ENTRY
-%macro __FASTCALL16_ENTRY 0
+%macro __FASTCALL16_ENTRY 0-1
     push bp
     mov bp, sp
+    %if %0 = 1
+    sub  sp, %1        ; reserve locals only when needed
+    %endif
 %endmacro
 %endif
 
+; restore minimum stack frame, all regs are caller save
 %ifnmacro __FASTCALL16_EXIT
 %macro __FASTCALL16_EXIT 0
     mov sp, bp
