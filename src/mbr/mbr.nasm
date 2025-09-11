@@ -146,9 +146,9 @@ main:
         call kmemcpy                            ; copy partition table to bss
         add sp, 0x6
         
-        mov si, word [bp - 4]
-        mov dl, byte [bp - 2]
-        mov bx, partition_table
+        mov si, word [bp - 4]                   ; partition_offset address
+        mov dl, byte [bp - 2]                   ; pass drive # from BIOS to VBR in dl
+        mov bx, partition_table                 ; partition_table address
         jmp word 0x0000:VBR_ENTRY
 
 ; ###############
