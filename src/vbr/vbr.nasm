@@ -85,10 +85,6 @@ init:
 %include "util/kmem_func.nasm"
 %include "util/error_func.nasm"
 
-; ###############
-; End Section
-; ###############
-
 ;
 ; byte boot_drive @ bp - 2
 ; word part_offset @ bp - 4
@@ -96,7 +92,7 @@ init:
 ALIGN 4, db 0x90
 main:
     mov byte [bp - 2], dl                 ; boot_drive
-    mov word [bp - 4], si                 ; part_offset
+    mov word [bp - 4], si                 ; part_offset (i.e offset into partition table our boot partition is
     mov word [bp - 6], bx                 ; partition_table
 
 .load_fs_data:                      
