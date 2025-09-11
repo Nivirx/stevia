@@ -193,6 +193,62 @@ hcf:
 ;
 ; ##############################
 
+; int read_mbr(int boot_drive, void* dst)
+; destination buffer needs 512 bytes of space
+read_mbr:
+    __CDECL16_PROC_ENTRY
+.func:
+    __BOCHS_MAGIC_DEBUG
+    ; read mbr on boot drive to memory (for the partition table)
+    movzx ax, byte [bp - 4]
+    push ax                                 ; drive_num (2)
+    push 0x01                               ; count (2)
+
+    push dword 0x0                          ; lba (4)
+
+    push word [bp - 6]                      ; offset = dst
+    push __STAGE2_SEGMENT                   ; this segment 
+    __CDECL16_CALL read_disk_raw, 12
+    ; TODO: this needs error checking, zero checking, check the sig a bunch of stuff...
+.endf:
+    __CDECL16_PROC_EXIT
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
+; int read_vbr(int boot_drive, void* mbr, void* buf)
+read_vbr:
+    __CDECL16_PROC_ENTRY
+.func:
+    __BOCHS_MAGIC_DEBUG
+    ; read vbr on boot partition to memory (for fat bpb/ebpb)
+.calc_part_offset:
+    mov bx, [bp - 6]
+    add bx, 0x1B8                   ; offset to partition table in mbr
+    mov cx, 4                       ; only checking 4 entries
+.find_active_L0:
+    mov al, byte [bx + PartEntry_t.attributes]
+    test al, 0x80                           ; 0x80 == 1000_0000b
+    jnz read_vbr.active_found
+    add bx, 0x10                            ; add 16 bytes to offset
+    loop read_vbr.find_active_L0
+    jmp read_vbr.error
+.active_found:
+    movzx ax, byte [bp - 4]
+    push ax                                 ; drive_num (2)
+    push 0x01                               ; count (2)
+
+    mov eax, dword [bx + PartEntry_t.lba_start]
+    push dword eax                          ; lba (4)
+
+    push word [bp - 6]                      ; offset = dst
+    push __STAGE2_SEGMENT                   ; this segment 
+    __CDECL16_CALL read_disk_raw, 12
+    ; vbr (with fat bpb/ebpb) is at the buffer now
+.endf:
+    __CDECL16_PROC_EXIT
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
 ; set ds and es segments back to the base of the loader
 %ifnmacro __TINY_DS_ES
 %macro __TINY_DS_ES 0
