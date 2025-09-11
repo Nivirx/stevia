@@ -1,6 +1,8 @@
 # Stevia Bootloader
 
-Stevia is a lightweight, hobby bootloader written in Assembly and C, designed for educational purposes. It targets 686+ and aims to be simple, approachable, and understandable, focusing on minimalism and core functionality.
+Stevia is a lightweight, hobby bootloader written in Assembly (NASM) and is designed for educational purposes. It targets 686+ and aims to be simple, approachable, and understandable, focusing on minimalism and core functionality.
+
+Please note: **Most development currently takes place in Bochs (and maybe is tested on QEMU), due to this, the code in this repo has not been tested throughly aginist real hardware. As with most projects of this nature, there is a risk of damage due to improper programing of hardware, while careful effort is taken to not break the computer...accidents and mistakes can/do happen.**
 
 ## Features
 
@@ -55,6 +57,8 @@ To build and run Stevia, you will need the following tools installed on your sys
 ## Project Goals
 
 Stevia is intended to be a learning tool for those interested in low-level programming, focusing on understanding the basics of how a computer starts up and manages early system resources.
+
+You are welcome to fork/review the code base but I am generally not accepting PR's/Contributions to the code at this time.
 
 ## License
 
