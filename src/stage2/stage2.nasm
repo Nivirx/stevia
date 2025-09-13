@@ -338,7 +338,7 @@ ALIGN 4, db 0x90
 EnterUnrealMode:
     __CDECL16_PROC_ENTRY
     cli                                   ; no interrupts
-.func:    
+.proc:    
     lgdt [((__STAGE2_SEGMENT << 4) + UnrealGdtInfo)]                 ; load unreal gdt
 
     mov eax, cr0                          
@@ -480,19 +480,19 @@ Gdt32Start:
 Gdt32End:
 
 align 16,db 0
-BUILD_NASM_VER:
+BuildNasmVer:
     db "Stevia Stage2 built with NASM - ", __NASM_VER__, 00h
 
 align 16,db 0
-BUILD_DATETIME:
+BuildDateTime:
     db 'Assembled - ', __DATE__, ' ', __TIME__, 00h
 
 align 16,db 0
-BUILD_GIT_VER:
+BuildGitVer:
     db __GIT_VER__, 00h
 
 align 16,db 0
-BUILD_GIT_HASH:
+BuildGitHash:
     db __GIT_HASH__, 00h
 end_data:
 
