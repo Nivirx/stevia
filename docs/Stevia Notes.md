@@ -207,24 +207,45 @@ Each GDT entry is 8 bytes:
 
 ## **5. Memory Layout Example**
 
-### **Low Memory (First MiB)**
+### **Low Memory/Upper Memory map (<= 1MiB)**
 
-| Start       | End         | Size            | Type                  | Description                      |
-|-------------|-------------|-----------------|-----------------------|----------------------------------|
-| 0x00000000  | 0x000003FF  | 1 KiB           | RAM (partially unusable) | Real Mode IVT (Interrupt Vector Table) |
-| 0x00000400  | 0x000004FF  | 256 bytes       | RAM (partially unusable) | BDA (BIOS data area)             |
-| 0x00000500  | 0x00007BFF  | almost 30 KiB   | RAM - free for use     | Conventional memory              |
-| 0x00007C00  | 0x00007DFF  | 512 bytes       | RAM (partially unusable) | OS BootSector                    |
-| 0x00007E00  | 0x0007FFFF  | 480.5 KiB       | RAM - free for use     | Conventional memory              |
-| 0x00080000  | 0x0009FFFF  | 128 KiB         | RAM (partially unusable) | EBDA (Extended BIOS Data Area)   |
-| 0x000A0000  | 0x000FFFFF  | 384 KiB         | various (unusable)     | Video memory, ROM Area           |
+| Start       | End         | Size            | Type                 | Description                    |
+|-------------|-------------|-----------------|----------------------|--------------------------------|
+| 0x00000000  | 0x000003FF  | 1 KiB           | RAM reclaimable~1~   | Real Mode IVT                  |
+| 0x00000400  | 0x000004FF  | 256 bytes       | RAM reclaimable~1~   | BDA                            |
+| 0x00000500  | 0x00007BFF  | 29 KiB + 767b   | RAM - free           | Conventional memory            |
+| 0x00007C00  | 0x00007DFF  | 512 bytes       | RAM reclaimable~2~   | OS BootSector                  |
+| 0x00007E00  | 0x0007FFFF  | 480.5 KiB       | RAM - free           | Conventional memory            |
+| 0x00080000  | 0x0009FFFF  | 128 KiB         | RAM (unusable)~1~    | EBDA (Extended BIOS Data Area) |
+| 0x000A0000  | 0x000FFFFF  | 384 KiB         | Upper RAM (unusable) | Video memory, ROM Area         |
 
-### **Extended Memory (Above 1 MiB)**
+1. Reclaimable in the event that you *never* need the BIOS again & once the CPU is in protected mode.
+2. Reclaimable after you are done with with the MBR/VBR stages.
 
-| Start       | End         | Size            | Description            |
-|-------------|-------------|-----------------|------------------------|
-| 0x00100000  | 0x00EFFFFF  | 14 MiB          | RAM - free for use     |
+### **Extended Memory (> 1 MiB)**
+
+This is only an example, you should always check the memory map.
+
+| Start       | End         | Size            | Description                           |
+|-------------|-------------|-----------------|---------------------------------------|
+| 0x00100000  | 0x00EFFFFF  | 14 MiB          | RAM(?) - free for use                    |
 | 0x00F00000  | 0x00FFFFFF  | 1 MiB           | Possible memory-mapped hardware (ISA) |
-| 0x01000000  | ?           | ?               | More extended memory   |
+| 0x01000000  | ?           | ?               | More extended memory                  |
 | 0xC0000000  | 0xFFFFFFFF  | 1 GiB           | Memory mapped PCI devices, BIOS, etc. |
-| 0x0000000100000000 | ?     | ?               | RAM - usable in PAE/64-bit mode |
+| 0x0000000100000000 | ?    | ?               | RAM(?) - usable in PAE/64-bit mode      |
+
+
+## **6. Stage2 Memory Layout  **
+
+Overall, Tiny (64 KiB page) Code/Data, Flat 4GiB mapping in gs/fs after unreal switch
+
+| Start       | End         | Size (Bytes) | Type               | Description                |
+|-------------|-------------|--------------|--------------------|----------------------------|
+| 0x00000000  | 0x000003FF  | 0x400        | RAM - (BIOS)       | Real Mode IVT              |
+| 0x00000400  | 0x000004FF  | 0x100        | RAM - (BIOS)       | BDA                        |
+| 0x00000500  | 0x000042FF  | 0x3E00       | RAM - .text/.data  | Code and constants/strings |
+| 0x00004300  | 0x000044FF  | 0x100        | RAM - .sign        | EOF marker/signature       |
+| 0x00004500  | 0x000074FF  | 0x3000       | RAM - bss          | Runtime data/stack         |
+| 0x00007500  | 0x00007FFF  | 0xB00        | RAM - reserved     | Reserved                   |
+| 0x00008000  | 0x0000DFFF  | 0x6000       | RAM - heap         | Conventional memory        |
+| 0x0000F000  | 0x0000FFFF  | 0x1000       | RAM - reserved     | Reserved                   |
