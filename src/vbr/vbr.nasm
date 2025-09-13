@@ -21,6 +21,7 @@
 %define __STEVIA_VBR
 section .text
 __ENTRY:
+phy_bpb_start:
     jmp short (init - $$)
     nop
 
@@ -91,25 +92,9 @@ init:
 ; ptr partition_table
 ALIGN 4, db 0x90
 main:
-    mov byte [bp - 2], dl                 ; boot_drive
-    mov word [bp - 4], si                 ; part_offset (i.e offset into partition table our boot partition is
-    mov word [bp - 6], bx                 ; partition_table
-
-.load_fs_data:                      
-    push PartTable_t_size                              ; count=                                    
-    push word [bp - 6]                                 ; src= ptr partition_table                                
-    push partition_table                               ; dst=
-    call kmemcpy                                       ; copy partition table data to bss
-    add sp, 0x6
-     
-    push (FAT32_bpb_t_size + FAT32_ebpb_t_size)        ; size in byte, should be 90 bytes                                     
-    push __ENTRY                                       ; src
-    push fat32_bpb                                     ; dst
-    call kmemcpy                                       ; copy bpb & ebpb to bss
-    add sp, 0x6
-
-.check_FAT_size:                     ; we only support a very specific setup of FAT32
-    mov bx, fat32_bpb
+    mov byte [bp - 2], dl                                  ; boot_drive
+.check_FAT_size:                                           ; we only support a very specific setup of FAT32
+    mov bx, phy_bpb_start
     test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
     jz main.load_stage2
     ERROR VBR_ERROR_WRONG_FAT_SIZE
@@ -132,11 +117,7 @@ main:
     call read_disk_raw
     add sp, 0xC
 .enter_stage2:
-    ; TODO: review what we pass to stage2, do we need to do this?
-    mov dl, byte [bp - 2]               ; byte boot_drive
-    mov ax, word [bp - 4]               ; word part_offset
-    mov si, partition_table             ; ptr partition_table
-    mov di, fat32_bpb                   ; ptr fat32_bpb
+    mov dl, byte [bp - 2]                ; byte boot_drive
     jmp word 0x0000:STAGE2_ENTRY
 
 ; ###############
@@ -158,17 +139,10 @@ section .bss follows=.text
 begin_bss:
 
 align 16, resb 1
-partition_table resb PartTable_t_size
-
-align 16, resb 1
-fat32_bpb resb FAT32_bpb_t_size
-fat32_ebpb resb FAT32_ebpb_t_size
-
-align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb (512 - 16)                  ; 512b stack early on
+stack_bottom resb (1024 - 16)                  ; 512b stack early on
 stack_top:
 vbr_redzone resb 16
 end_bss:

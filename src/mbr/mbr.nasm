@@ -140,15 +140,7 @@ main:
         je main.sig_ok
         ERROR MBR_ERROR_NO_VBR_SIG              ; no signature present
     .sig_ok:  
-        push PartTable_t_size                   ; len       
-        push DiskSig                            ; src -> start of partition table
-        push partition_table                    ; dst -> addr in bss 
-        call kmemcpy                            ; copy partition table to bss
-        add sp, 0x6
-        
-        mov si, word [bp - 4]                   ; partition_offset address
         mov dl, byte [bp - 2]                   ; pass drive # from BIOS to VBR in dl
-        mov bx, partition_table                 ; partition_table address
         jmp word 0x0000:VBR_ENTRY
 
 ; ###############
@@ -182,13 +174,10 @@ section .bss follows=.text
 begin_bss:
 
 align 16, resb 1
-partition_table resb PartTable_t_size
-
-align 16, resb 1
 lba_packet resb LBAPkt_t_size
 
 align 512, resb 1
-stack_bottom resb 512 - 16                 ; 512 byte stack early on
+stack_bottom resb 1024 - 16                 ; 512 byte stack early on
 stack_top:
 mbr_redzone resb 16
 end_bss:
