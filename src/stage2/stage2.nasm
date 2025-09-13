@@ -36,18 +36,10 @@
 section .text
 begin_text:
 ; dl = byte boot_drive
-; ax = word part_offset (active partition offset)
-; si = ptr PartTable_t partition_table
-; di = ptr FAT32_bpb_t fat32_bpb
 ALIGN 4, db 0x90
 init:
     cli                               ; We do not want to be interrupted
-
-    ; these 4 are stored in the .data section and are effectivly const types
-    mov [vbr_part_table_ptr], si             ; pointer to partition_table
-    mov [vbr_fat32_bpb_ptr], di              ; pointer to fat32_bpb
-    mov [boot_drive], dl                     ; copy boot_drive to globals
-    mov [partition_offset], ax               ; copy partition_offset to globals
+    mov [boot_drive], dl              ; copy boot_drive to globals
 
     mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
@@ -129,23 +121,35 @@ main:
     je main.stage2_main
     ERROR STAGE2_SIGNATURE_MISSING
 .stage2_main:
-    ; copy partition table data to .data section in stage2
-    __CDECL16_CALL_ARGS partition_table, word [vbr_part_table_ptr], PartTable_t_size
-    __CDECL16_CALL kmemcpy, 3
-
-    ; copy bpb & ebpb to memory
-    __CDECL16_CALL_ARGS fat32_bpb, word [vbr_fat32_bpb_ptr], (FAT32_bpb_t_size + FAT32_ebpb_t_size) 
-    __CDECL16_CALL kmemcpy, 3
-
     call SetTextMode
     call disable_cursor_bios
+
+    ; setup the early heap
+    __CDECL16_CALL_ARGS early_heap_state
+    __CDECL16_CALL arena_init, 1
 
     __CDECL16_CALL_ARGS HelloPrompt_info
     __CDECL16_CALL PrintString, 1
 
-    ; setup the early heap
-    __CDECL16_CALL_ARGS early_heap_state
-    
+    ; setup and store our vbr/mbr (e)bpb
+    __CDECL16_CALL_ARGS 0x200, 0x10
+    __CDECL16_CALL arena_alloc, 2
+    mov word [mbr_ptr], ax
+
+    push ax                                         ; dst
+    movzx ax, byte [boot_drive]                     
+    push ax                                         ; boot_drive
+    __CDECL16_CALL read_mbr, 2                      ; fill mbr buffer
+
+    __CDECL16_CALL_ARGS 0x200, 0x10
+    __CDECL16_CALL arena_alloc, 2
+    mov word [vbr_ptr], ax
+
+    push ax                                         ; dst
+    movzx ax, byte [boot_drive]
+    push ax                                         ; boot_drive
+    __CDECL16_CALL read_vbr, 2                      ; fill vbr buffer
+
     ; enable A20 gate
     call EnableA20
     __CDECL16_CALL_ARGS A20_Enabled_OK_info
@@ -197,55 +201,80 @@ hcf:
 ; destination buffer needs 512 bytes of space
 read_mbr:
     __CDECL16_PROC_ENTRY
-.func:
-    __BOCHS_MAGIC_DEBUG
+.proc:
     ; read mbr on boot drive to memory (for the partition table)
-    movzx ax, byte [bp - 4]
+    movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
     push 0x01                               ; count (2)
 
     push dword 0x0                          ; lba (4)
 
-    push word [bp - 6]                      ; offset = dst
+    push word [bp + 6]                      ; offset = dst
     push __STAGE2_SEGMENT                   ; this segment 
-    __CDECL16_CALL read_disk_raw, 12
+    call read_disk_raw
+    add sp, 0xC
+
+.check_sig:
+    mov bx, [bp + 6]
+    cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
+    jne read_mbr.error
     ; TODO: this needs error checking, zero checking, check the sig a bunch of stuff...
-.endf:
+.update_globals:
+    mov ax, [bp + 6]
+    add ax, 0x1B8                           ; offset to start of PartTable
+    mov [part_table_ptr], ax
+.endp:
     __CDECL16_PROC_EXIT
+    ret
 .error:
     ERROR STEVIA_DEBUG_ERR
 
-; int read_vbr(int boot_drive, void* mbr, void* buf)
+; int read_vbr(int boot_drive, void* buf)
 read_vbr:
     __CDECL16_PROC_ENTRY
-.func:
+.proc:
     __BOCHS_MAGIC_DEBUG
     ; read vbr on boot partition to memory (for fat bpb/ebpb)
 .calc_part_offset:
-    mov bx, [bp - 6]
-    add bx, 0x1B8                   ; offset to partition table in mbr
-    mov cx, 4                       ; only checking 4 entries
+    mov bx, word [part_table_ptr]           ; base pointer @ partition table
+    mov cx, 4                               ; only checking 4 entries
+    mov si, PartEntry_t.attributes
 .find_active_L0:
-    mov al, byte [bx + PartEntry_t.attributes]
+    mov al, byte [bx + si]
     test al, 0x80                           ; 0x80 == 1000_0000b
-    jnz read_vbr.active_found
-    add bx, 0x10                            ; add 16 bytes to offset
+    je read_vbr.active_found
+    add si, 0x10                            ; add 16 bytes to offset (next part entry's attributes)
     loop read_vbr.find_active_L0
     jmp read_vbr.error
 .active_found:
-    movzx ax, byte [bp - 4]
+    add bx, si                              ; update base to active part
+
+    movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
     push 0x01                               ; count (2)
 
     mov eax, dword [bx + PartEntry_t.lba_start]
     push dword eax                          ; lba (4)
 
-    push word [bp - 6]                      ; offset = dst
+    push word [bp + 6]                      ; offset = dst
     push __STAGE2_SEGMENT                   ; this segment 
-    __CDECL16_CALL read_disk_raw, 12
+    call read_disk_raw
+    add sp, 0xC
     ; vbr (with fat bpb/ebpb) is at the buffer now
-.endf:
+.check_sig:
+    mov bx, [bp + 6]
+    cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
+    jne read_mbr.error
+.check_FAT_size:
+    test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
+    jnz read_vbr.error
+.update_globals:
+    mov word [fat32_bpb_ptr], bx
+    add bx, FAT32_bpb_t_size                ; offset to ebpb
+    mov word [fat32_ebpb_ptr], bx
+.endp:
     __CDECL16_PROC_EXIT
+    ret
 .error:
     ERROR STEVIA_DEBUG_ERR
 
@@ -386,24 +415,13 @@ BootTarget:
     db 'BOOT    BIN'
 
 ;
-; pre-bss init globals (generally const...but there are exceptions)
+; pre-bss init globals
 ;
 
-align 8, db 0
+; set to boot_drive passed from BIOS almost first thing in init
+align 4, db 0
 boot_drive:
     db 0x00
-
-align 8, db 0
-partition_offset:
-    dw 0x0000
-
-align 8, db 0
-vbr_fat32_bpb_ptr:
-    dw 0x0000
-
-align 8, db 0
-vbr_part_table_ptr:
-    dw 0x0000
 
 align 16, db 0
 IntToHex_table:
@@ -497,8 +515,28 @@ STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stag
 
 section .bss follows=.sign
 begin_bss:
-; structures
 
+align 4, resb 1
+mbr_ptr:
+    resw 1
+
+align 4, resb 1
+vbr_ptr:
+    resw 1
+
+align 4, resb 1
+part_table_ptr:
+    resw 1
+
+align 4, resb 1
+fat32_bpb_ptr:
+    resw 1
+
+align 4, resb 1
+fat32_ebpb_ptr:
+    resw 1
+
+; structures
 align 16, resb 1
 partition_table: 
     resb PartTable_t_size
