@@ -39,7 +39,7 @@ begin_text:
 ALIGN 16, db 0x90
 init:
     cli                               ; We do not want to be interrupted
-    mov [boot_drive], dl              ; copy boot_drive to globals
+    mov [u8BootDrive], dl              ; copy boot_drive to globals
 
     mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
@@ -128,7 +128,7 @@ main:
     __CDECL16_CALL_ARGS early_heap_state
     __CDECL16_CALL arena_init, 1
 
-    __CDECL16_CALL_ARGS HelloPrompt_info
+    __CDECL16_CALL_ARGS pszHelloPrompt
     __CDECL16_CALL PrintString, 1
 
     ; setup and store our vbr/mbr (e)bpb
@@ -137,7 +137,7 @@ main:
     mov word [mbr_ptr], ax
 
     push ax                                         ; dst
-    movzx ax, byte [boot_drive]                     
+    movzx ax, byte [u8BootDrive]                     
     push ax                                         ; boot_drive
     __CDECL16_CALL read_mbr, 2                      ; fill mbr buffer
 
@@ -146,18 +146,18 @@ main:
     mov word [vbr_ptr], ax
 
     push ax                                         ; dst
-    movzx ax, byte [boot_drive]
+    movzx ax, byte [u8BootDrive]
     push ax                                         ; boot_drive
     __CDECL16_CALL read_vbr, 2                      ; fill vbr buffer
 
     ; enable A20 gate
     call EnableA20
-    __CDECL16_CALL_ARGS A20_Enabled_OK_info
+    __CDECL16_CALL_ARGS pszA20EnabledOk
     __CDECL16_CALL PrintString, 1
 
     ; get system memory map
     call GetMemoryMap
-    __CDECL16_CALL_ARGS MemoryMap_OK_info
+    __CDECL16_CALL_ARGS pszMemoryMapOk
     __CDECL16_CALL PrintString, 1
 
     ; enter unreal mode (enter PM w/ 16 bit code, 32 bit flat memory model & return to real)
@@ -165,12 +165,12 @@ main:
     ; use __REFLAT macros to re-flat ds/es for easy transfers to >1MiB
     ; NOTE: if you modify a segment register you will need to re-unreal it
     call EnterUnrealMode
-    __CDECL16_CALL_ARGS UnrealMode_OK_info
+    __CDECL16_CALL_ARGS pszUnrealModeOk
     __CDECL16_CALL PrintString, 1
 
     ; FAT Driver setup
     ;call InitFATDriver
-    ;__CDECL16_CALL_ARGS InitFATSYS_OK_info
+    ;__CDECL16_CALL_ARGS pszInitFAT32Ok
     ;__CDECL16_CALL PrintString, 1
 
     ;
@@ -178,7 +178,7 @@ main:
     ;call SearchFATDIR
     ;push dword eax      ; save first cluster of bootable file
 
-    ;__CDECL16_CALL_ARGS FileFound_OK_info
+    ;__CDECL16_CALL_ARGS pszFileFoundMsg
     ;__CDECL16_CALL PrintString, 1
 
     ;pop dword eax
@@ -385,40 +385,35 @@ begin_data:
 ; #############
 %define CRLF 0Dh, 0Ah
 
-%macro define_cstr 2
+%macro define_cstr 2-*
+%if %0 > 2
     align 16
-    %1_cstr:
+    %1:
+        db %{2:-1}, 00h
+%else
+    align 16
+    %1:
         db %2, 00h
+%endif
 %endmacro
 
-%macro define_info 2
-    align 16
-    %1_info:
-        db %2, CRLF, 00h
-%endmacro
+define_cstr pszHelloPrompt, "Hello from Stevia Stage2!", CRLF
+define_cstr pszA20EnabledOk, "A20 Enabled OK", CRLF
+define_cstr pszMemoryMapOk, "Memory map OK", CRLF
+define_cstr pszUnrealModeOk, "Unreal mode OK", CRLF
+define_cstr pszInitFAT32Ok, "FAT32 Driver Init OK", CRLF
 
-define_info HelloPrompt, "Hello from Stevia Stage2!"
-define_info A20_Enabled_OK, "A20 Enabled OK"
-define_info MemoryMap_OK, "Memory map OK"
-define_info UnrealMode_OK, "Unreal mode OK"
-define_info FileFound_OK, "Found SFN entry for bootable binary, first cluster -> "
-define_info InitFATSYS_OK, "FAT32 Driver Init..."
-
-define_info SearchFATDIR, "Searching FAT DIR for bootable file..."
-define_info NextFATCluster, "Attempting to find next FAT cluster..."
-define_info ReadFATCluster, "Attempting to load next FAT"
-define_info MaybeFound_Boot, "Maybe found a file...checking..."
+define_cstr pszFileFoundMsg, "Found SFN entry for bootable binary, first cluster -> ", CRLF
+define_cstr pszSearchFAT32DirMsg, "Searching FAT fs for bootable file...", CRLF
+define_cstr pszReadFAT32ClusterMsg, "Attempting to load next FAT", CRLF
+define_cstr pszMaybeFoundBootMsg, "Maybe found a file...checking...", CRLF
 
 define_cstr BootTarget, "BOOT    BIN"
 
 ; set to boot_drive passed from BIOS almost first thing in init
 align 4, db 0
-boot_drive:
+u8BootDrive:
     db 0x00
-
-align 16, db 0
-BootTarget:
-    db 'BOOT    BIN'
 
 align 16, db 0
 IntToHex_table:
