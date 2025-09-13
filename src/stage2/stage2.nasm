@@ -139,7 +139,7 @@ main:
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]                     
     push ax                                         ; boot_drive
-    __CDECL16_CALL read_mbr, 2                      ; fill mbr buffer
+    __CDECL16_CALL ReadMbrData, 2                      ; fill mbr buffer
 
     __CDECL16_CALL_ARGS 0x200, 0x10
     __CDECL16_CALL arena_alloc, 2
@@ -148,7 +148,7 @@ main:
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]
     push ax                                         ; boot_drive
-    __CDECL16_CALL read_vbr, 2                      ; fill vbr buffer
+    __CDECL16_CALL ReadVbrData, 2                      ; fill vbr buffer
 
     ; enable A20 gate
     call EnableA20
@@ -199,7 +199,7 @@ hcf:
 
 ; int read_mbr(int boot_drive, void* dst)
 ; destination buffer needs 512 bytes of space
-read_mbr:
+ReadMbrData:
     __CDECL16_PROC_ENTRY
 .proc:
     ; read mbr on boot drive to memory (for the partition table)
@@ -213,11 +213,10 @@ read_mbr:
     push __STAGE2_SEGMENT                   ; this segment 
     call read_disk_raw
     add sp, 0xC
-
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne read_mbr.error
+    jne ReadMbrData.error
     ; TODO: this needs error checking, zero checking, check the sig a bunch of stuff...
 .update_globals:
     mov ax, [bp + 6]
@@ -230,22 +229,20 @@ read_mbr:
     ERROR STEVIA_DEBUG_ERR
 
 ; int read_vbr(int boot_drive, void* buf)
-read_vbr:
+; read vbr on boot partition to memory (for fat bpb/ebpb)
+ReadVbrData:
     __CDECL16_PROC_ENTRY
 .proc:
-    __BOCHS_MAGIC_DEBUG
-    ; read vbr on boot partition to memory (for fat bpb/ebpb)
-.calc_part_offset:
-    mov bx, word [part_table_ptr]           ; base pointer @ partition table
+    mov bx, word [part_table_ptr]           ; calculate offset; base pointer @ partition table
     mov cx, 4                               ; only checking 4 entries
     mov si, PartEntry_t.attributes
 .find_active_L0:
     mov al, byte [bx + si]
     test al, 0x80                           ; 0x80 == 1000_0000b
-    je read_vbr.active_found
+    je ReadVbrData.active_found
     add si, 0x10                            ; add 16 bytes to offset (next part entry's attributes)
-    loop read_vbr.find_active_L0
-    jmp read_vbr.error
+    loop ReadVbrData.find_active_L0
+    jmp ReadVbrData.error
 .active_found:
     add bx, si                              ; update base to active part
 
@@ -264,10 +261,10 @@ read_vbr:
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne read_mbr.error
+    jne ReadVbrData.error
 .check_FAT_size:
     test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
-    jnz read_vbr.error
+    jnz ReadVbrData.error
 .update_globals:
     mov word [fat32_bpb_ptr], bx
     add bx, FAT32_bpb_t_size                ; offset to ebpb
