@@ -36,7 +36,7 @@
 section .text
 begin_text:
 ; dl = byte boot_drive
-ALIGN 4, db 0x90
+ALIGN 16, db 0x90
 init:
     cli                               ; We do not want to be interrupted
     mov [boot_drive], dl              ; copy boot_drive to globals
@@ -375,7 +375,8 @@ EnterUnrealMode:
 end_text:
 
 section .data follows=.text
-align 512
+align 16, db 0
+
 begin_data:
 ; #############
 ;
@@ -410,18 +411,14 @@ define_info MaybeFound_Boot, "Maybe found a file...checking..."
 
 define_cstr BootTarget, "BOOT    BIN"
 
-align 16, db 0
-BootTarget:
-    db 'BOOT    BIN'
-
-;
-; pre-bss init globals
-;
-
 ; set to boot_drive passed from BIOS almost first thing in init
 align 4, db 0
 boot_drive:
     db 0x00
+
+align 16, db 0
+BootTarget:
+    db 'BOOT    BIN'
 
 align 16, db 0
 IntToHex_table:
@@ -504,15 +501,20 @@ BUILD_GIT_HASH:
     db __GIT_HASH__, 00h
 end_data:
 
-%assign bytes_remaining ((MAX_STAGE2_BYTES - 512) - (($ - $$) + (end_text - begin_text)))
-%warning STAGE2 has bytes_remaining bytes remaining for code/data (MAX: MAX_STAGE2_BYTES)
+%define SIG_BYTES 0x4
+
+; Optional: fail fast if we overflowed
+%if ((MAX_STAGE2_BYTES - 512) - (($ - $$) + (end_text - begin_text))) < 0
+    %error "Stage2 overflow: code+data exceed MAX_STAGE2_BYTES - SIG_BYTES"
+%endif
 
 ; section start location needs to be a 'critical expression'
 ; i.e resolvable at build time, we are setting 0x0500 as the offset since
 section .sign start=((MAX_STAGE2_BYTES - 512) + 0x0500)
 times ((512 - 4) - ($ -$$) ) db 0x90     ; nop
 STAGE2_SIG: dd 0xDEADBEEF                ; Signature to mark the end of the stage2
-
+; !!! END Stage2 .text/.data !!!
+align 16, resb 1
 section .bss follows=.sign
 begin_bss:
 
@@ -596,3 +598,11 @@ stack_bottom:
     resb 1024
 stack_top:
 end_bss:
+
+; Pad to the cap (emits nothing in the file; only increases .bss virtual size).
+; If BSS_SIZE > BSS_MAX_BYTES, this becomes negative and NASM errors out.
+%define BSS_MAX_BYTES 0x3000
+resb (BSS_MAX_BYTES - (end_bss - begin_bss))
+
+; Optional: keep a label for later math:
+bss_cap_end:

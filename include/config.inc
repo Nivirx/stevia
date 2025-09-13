@@ -15,7 +15,7 @@
 
 %ifndef __INC_STEVIA_CONFIG
 
-%define SECTOR_SIZE             512
+%define SECTOR_SIZE            0x200
 %define STAGE2_SECTOR_COUNT    0x20
 ; 16 KiB
 %define MAX_STAGE2_BYTES      (SECTOR_SIZE * STAGE2_SECTOR_COUNT)
