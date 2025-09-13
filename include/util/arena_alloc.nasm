@@ -11,9 +11,9 @@ endstruc
 
 ; void arena_init(ArenaState *a)
 ;
-arena_init:
+ArenaInit:
     __CDECL16_PROC_ENTRY
-.func:
+.proc:
     mov ax, word [bp + 4]     ; ptr to state structure
     mov di, ax
 
@@ -25,15 +25,11 @@ arena_init:
     ; zero out heap area on init
     ; void* kmemset_byte(void* dst, uint8_t val, uint16_t len);
     ; TODO: use word or qword spacing at least to speed this up
-    mov ax, __ARENA_HEAP_SIZE
-    push ax                     ; len
-    xor ax, ax
-    push ax                     ; val = 0
-    mov ax, __ARENA_HEAP_START
-    push ax                     ; dst
+    push __ARENA_HEAP_SIZE       ; len
+    push 0x0                     ; val = 0
+    push __ARENA_HEAP_START      ; dst
     call kmemset
     add sp, 0x6
-
 .endp:
     __CDECL16_PROC_EXIT
     ret
@@ -43,7 +39,7 @@ arena_init:
 ; align x up to the nearest specified alignment (a), a should be a power of 2
 ; (x + (a-1)) & ~(a-1)
 ; return value in ax
-arena_align_up:
+ArenaAlignUp:
     __CDECL16_PROC_ENTRY
 .func:
     ; if a == 0 return x
@@ -51,7 +47,7 @@ arena_align_up:
     mov bx, [bp + 6]      ; a
 
     test bx, bx
-    jz .endp              
+    jz .endf              
 
     ; enforce power-of-two for alignment, return x
     ; for example...
@@ -69,7 +65,7 @@ arena_align_up:
     mov cx, bx
     dec cx
     test bx, cx
-    jnz .endp
+    jnz .endf
 
     dec bx                ; a - 1
 
@@ -80,7 +76,7 @@ arena_align_up:
     and cx, bx            ; and with the inverse
 
     mov ax, cx            ; move to ax and return
-.endp:
+.endf:
     __CDECL16_PROC_EXIT
     ret
 
@@ -88,9 +84,9 @@ arena_align_up:
 ; bp-2 - current used arena (i.e 'highmark')
 ; bp-4 - aligned_ptr 
 ; bp-6 - new_end
-arena_alloc:
+ArenaAlloc:
     __CDECL16_PROC_ENTRY 0x10
-.func:
+.proc:
     ; remove bytes from pool and increment mark to the new cursor location
     ; return a pointer to the begining of  allocated segment
     mov bx, early_heap_state
@@ -102,11 +98,10 @@ arena_alloc:
 
     push bx                         ; save heap_state pointer
 
-    mov ax, word [bp + 6]           ; requested next allocation alignment
-    push ax
-    mov ax, word [bp - 2]           ; current arena 'highmark'
-    push ax
-    call arena_align_up
+              
+    push word [bp + 6]              ; requested next allocation alignment     
+    push word [bp - 2]              ; current arena 'highmark'
+    call ArenaAlignUp
     add sp, 0x4
     mov word [bp - 4], ax           ; save return value
 
@@ -118,7 +113,7 @@ arena_alloc:
 
     mov dx, word [bx + ArenaStateStruc_t.end]
     cmp ax, dx
-    ja arena_alloc.error            ; if our heap end is < the requested throw an error, heap is full
+    ja .error                       ; if our heap end is < the requested throw an error, heap is full
                                     ; else update the mark to the new value & return  the aligned pointer
 
     ; mark_delta = new_end - curr_used
@@ -140,7 +135,7 @@ arena_alloc:
 
 arena_mark:
     __CDECL16_PROC_ENTRY
-.func:
+.proc:
     ; return the current location of the 'cursor' in the allocator
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
@@ -149,7 +144,7 @@ arena_mark:
 
 arena_reset_to:
     __CDECL16_PROC_ENTRY
-.func:
+.proc:
     ; rewind the arena to a previously marked point
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:
@@ -158,7 +153,7 @@ arena_reset_to:
 
 arena_reset:
     __CDECL16_PROC_ENTRY
-.func:
+.proc:
     ; reset the entire heap to a fresh state
     ERROR STEVIA_DEBUG_UNIMPLEMENTED
 .endp:

@@ -126,14 +126,14 @@ main:
 
     ; setup the early heap
     __CDECL16_CALL_ARGS early_heap_state
-    __CDECL16_CALL arena_init, 1
+    __CDECL16_CALL ArenaInit, 1
 
     __CDECL16_CALL_ARGS pszHelloPrompt
     __CDECL16_CALL PrintString, 1
 
     ; setup and store our vbr/mbr (e)bpb
     __CDECL16_CALL_ARGS 0x200, 0x10
-    __CDECL16_CALL arena_alloc, 2
+    __CDECL16_CALL ArenaAlloc, 2
     mov word [mbr_ptr], ax
 
     push ax                                         ; dst
@@ -142,13 +142,13 @@ main:
     __CDECL16_CALL ReadMbrData, 2                      ; fill mbr buffer
 
     __CDECL16_CALL_ARGS 0x200, 0x10
-    __CDECL16_CALL arena_alloc, 2
+    __CDECL16_CALL ArenaAlloc, 2
     mov word [vbr_ptr], ax
 
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]
     push ax                                         ; boot_drive
-    __CDECL16_CALL ReadVbrData, 2                      ; fill vbr buffer
+    __CDECL16_CALL ReadVbrData, 2                   ; fill vbr buffer
 
     ; enable A20 gate
     call EnableA20
