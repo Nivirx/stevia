@@ -419,8 +419,8 @@ IntToHex_table:
 ; see docs/gdt.txt for a quick refresher on GDT 
 align 16, db 0
 UnrealGdtInfo:
-    g_u16_UnrealGdt_size: dw (UnrealGdtEnd - UnrealGdtStart) - 1
-    g_pF_UnrealGdtPtr:  dd ((__STAGE2_SEGMENT << 4) + UnrealGdtStart)
+    u16_UnrealGdt_size: dw (UnrealGdtEnd - UnrealGdtStart) - 1
+    pF_UnrealGdtPtr:  dd ((__STAGE2_SEGMENT << 4) + UnrealGdtStart)
 UnrealGdtStart:
     ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
