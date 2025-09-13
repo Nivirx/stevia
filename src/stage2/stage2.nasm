@@ -39,7 +39,7 @@ begin_text:
 ALIGN 16, db 0x90
 init:
     cli                               ; We do not want to be interrupted
-    mov [u8BootDrive], dl              ; copy boot_drive to globals
+    mov [u8_BootDrive], dl              ; copy boot_drive to globals
 
     mov ax, __STAGE2_SEGMENT          ; set all our segments to the configured segment, except es
     mov ds, ax                        ; *
@@ -137,7 +137,7 @@ main:
     mov word [mbr_ptr], ax
 
     push ax                                         ; dst
-    movzx ax, byte [u8BootDrive]                     
+    movzx ax, byte [u8_BootDrive]                     
     push ax                                         ; boot_drive
     __CDECL16_CALL read_mbr, 2                      ; fill mbr buffer
 
@@ -146,7 +146,7 @@ main:
     mov word [vbr_ptr], ax
 
     push ax                                         ; dst
-    movzx ax, byte [u8BootDrive]
+    movzx ax, byte [u8_BootDrive]
     push ax                                         ; boot_drive
     __CDECL16_CALL read_vbr, 2                      ; fill vbr buffer
 
@@ -291,7 +291,7 @@ read_vbr:
 %ifnmacro __REFLAT_DS_ES
 %macro __REFLAT_DS_ES 0
     cli                                   ; no interrupts   
-    lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
+    lgdt [((__STAGE2_SEGMENT << 4) + UnrealGdtInfo)]                 ; load unreal gdt
 
     mov eax, cr0                          
     or eax, 1                             ; set pmode bit
@@ -315,7 +315,7 @@ read_vbr:
 %ifnmacro __REFLAT_ES
 %macro __REFLAT_ES 0
     cli                                   ; no interrupts   
-    lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
+    lgdt [((__STAGE2_SEGMENT << 4) + UnrealGdtInfo)]                 ; load unreal gdt
 
     mov eax, cr0                          
     or eax, 1                             ; set pmode bit
@@ -339,7 +339,7 @@ EnterUnrealMode:
     __CDECL16_PROC_ENTRY
     cli                                   ; no interrupts
 .func:    
-    lgdt [((__STAGE2_SEGMENT << 4) + unreal_gdt_info)]                 ; load unreal gdt
+    lgdt [((__STAGE2_SEGMENT << 4) + UnrealGdtInfo)]                 ; load unreal gdt
 
     mov eax, cr0                          
     or eax, 1                             ; set pmode bit
@@ -412,7 +412,7 @@ define_cstr BootTarget, "BOOT    BIN"
 
 ; set to boot_drive passed from BIOS almost first thing in init
 align 4, db 0
-u8BootDrive:
+u8_BootDrive:
     db 0x00
 
 align 16, db 0
@@ -421,10 +421,10 @@ IntToHex_table:
 
 ; see docs/gdt.txt for a quick refresher on GDT 
 align 16, db 0
-unreal_gdt_info:
-    unreal_gdt_size: dw (unreal_gdt_end - unreal_gdt_start) - 1
-    unreal_gdt_ptr:  dd ((__STAGE2_SEGMENT << 4) + unreal_gdt_start)
-unreal_gdt_start:
+UnrealGdtInfo:
+    g_u16_UnrealGdt_size: dw (UnrealGdtEnd - UnrealGdtStart) - 1
+    g_pF_UnrealGdtPtr:  dd ((__STAGE2_SEGMENT << 4) + UnrealGdtStart)
+UnrealGdtStart:
     ; entry 0 (null descriptor)
     dq 0                    ; first entry is null
 
@@ -441,14 +441,14 @@ unreal_gdt_start:
     db 1001_0010b        ; Access Byte: Present, ring0, S = 1, data (0), non-confirming, writable, present
     db 1000_1111b        ; Flags: GR = 4KiB, attr = <16-bit/?/?>, Granularity = 4KiB & 16:19 of limit
     db 0x00              ; Base Address(31:24)
-unreal_gdt_end:
+UnrealGdtEnd:
 
 align 16, db 0
-gdt32_info:
-    gdt32_size: dw (gdt32_end - gdt32_start) - 1
-    gdt32_ptr:  dd ((__STAGE2_SEGMENT << 4) + gdt32_start)
-gdt32_start:
-    dq 0
+Gdt32Info:
+    gdt32_size: dw (Gdt32End - Gdt32Start) - 1
+    gdt32_ptr:  dd ((__STAGE2_SEGMENT << 4) + Gdt32Start)
+Gdt32Start:
+        dq 0            ; null segment
     .gdt32_code:
         dw 0xFFFF       ; code segment (RX)
         dw 0x0000
@@ -477,7 +477,7 @@ gdt32_start:
         db 1001_0000b    ; Access: readable, not writable
         db 1100_1111b    ; 4KB granularity, 32-bit
         db 0x00
-gdt32_end:
+Gdt32End:
 
 align 16,db 0
 BUILD_NASM_VER:
