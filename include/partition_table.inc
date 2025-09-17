@@ -15,6 +15,9 @@
 
 %ifndef __INC_PART_TABLE
 
+%define DISK_SIGNATURE_OFFSET 0x1B8
+%define DISK_PARTITION_TABLE_OFFSET 0x1BE
+
 ; Partition table entry format
 ; Off.  Size.       Description
 ;0x00 	  1 	Drive attributes (bit 7 set = active or bootable)
@@ -34,8 +37,6 @@ struc PartEntry_t
 endstruc
 
 struc PartTable_t
-    .signature resb 4
-    .reserved  resb 2
     .partition1 resb PartEntry_t_size
     .partition2 resb PartEntry_t_size
     .partition3 resb PartEntry_t_size
