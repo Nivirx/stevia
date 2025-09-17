@@ -532,7 +532,7 @@ BIOSMemoryMap:
 
 align 16, resb 1
 stack_bottom:
-    resb 1024
+    resb 2048
 stack_top:
 end_bss:
 
