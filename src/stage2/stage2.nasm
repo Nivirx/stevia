@@ -108,12 +108,6 @@ struc SteviaInfoStruct_t
     .p16_VbrPtr                 resw 1
 endstruc
 
-struc EarlyBootStruct_t
-    .partition_table resb PartTable_t_size
-    .fat32_bpb       resb FAT32_bpb_t_size
-    .fat32_ebpb      resb FAT32_ebpb_t_size
-endstruc
-
 ALIGN 4, db 0x90
 main:
     __BOCHS_MAGIC_DEBUG
@@ -133,7 +127,7 @@ main:
     __CDECL16_CALL_ARGS pszHelloPrompt
     __CDECL16_CALL PrintString, 1
  
-    ; setup and store our vbr/mbr (e)bpb
+    ; setup heap space for mbr data
     __CDECL16_CALL_ARGS 0x200, 0x10
     __CDECL16_CALL ArenaAlloc, 2
     mov word [SteviaInfo + SteviaInfoStruct_t.p16_MbrPtr], ax
@@ -143,6 +137,7 @@ main:
     push ax                                         ; boot_drive
     __CDECL16_CALL ReadMbrData, 2                   ; fill mbr buffer
 
+    ; setup heap space for vbr data
     __CDECL16_CALL_ARGS 0x200, 0x10
     __CDECL16_CALL ArenaAlloc, 2
     mov word [SteviaInfo + SteviaInfoStruct_t.p16_VbrPtr], ax
