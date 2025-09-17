@@ -133,7 +133,7 @@ main:
         ; uint8_t read_stage2_raw(uint16_t buf_segment, uint16_t buf_offset, 
         ;                         uint32_t lba,
         ;                         uint16_t count, uint16_t drive_num)
-        call read_disk_raw
+        call BIOS_int13h_ext_read
         add sp, 0xC
     .goto_vbr:
         cmp word [VBR_ENTRY + 0x1FE], 0xAA55

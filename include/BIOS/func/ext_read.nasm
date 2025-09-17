@@ -51,7 +51,7 @@ endstruc
 ;                         uint32_t lba,
 ;                         uint16_t count, uint8_t drive_num)
 ALIGN 4, db 0x90
-read_disk_raw:
+BIOS_int13h_ext_read:
     __CDECL16_PROC_ENTRY
 .func:                         
     push LBAPkt_t_size        ; len

@@ -208,7 +208,7 @@ ReadMbrData:
 
     push word [bp + 6]                      ; offset = dst
     push __STAGE2_SEGMENT                   ; this segment 
-    call read_disk_raw
+    call BIOS_int13h_ext_read
     add sp, 0xC
 .check_sig:
     mov bx, [bp + 6]
@@ -250,7 +250,7 @@ ReadVbrData:
 
     push word [bp + 6]                      ; offset = dst
     push __STAGE2_SEGMENT                   ; this segment 
-    call read_disk_raw
+    call BIOS_int13h_ext_read
     add sp, 0xC
     ; vbr (with fat bpb/ebpb) is at the buffer now
 .check_sig:
