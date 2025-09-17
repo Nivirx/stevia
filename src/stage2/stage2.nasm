@@ -213,13 +213,13 @@ ReadMbrData:
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadMbrData.error
-    ; TODO: this needs error checking, zero checking, check the sig a bunch of stuff...
+    jne ReadMbrData.error_nosign
+    ; TODO: this needs more error checking, zero checking, check the sig a bunch of stuff...
 .endp:
     __CDECL16_PROC_EXIT
     ret
-.error:
-    ERROR STEVIA_DEBUG_ERR
+.error_nosign:
+    ERROR STAGE2_ERROR_BAD_MBR
 
 ; int read_vbr(int boot_drive, void* buf)
 ; read vbr on boot partition to memory (for fat bpb/ebpb)
@@ -239,7 +239,7 @@ ReadVbrData:
     je ReadVbrData.active_found
     add bx, PartEntry_t_size                ; next part entry's attributes
     loop ReadVbrData.find_active_L0
-    jmp ReadVbrData.error
+    jmp ReadVbrData.error_noactive
 .active_found:
     movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
@@ -256,15 +256,19 @@ ReadVbrData:
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadVbrData.error
+    jne ReadVbrData.error_nosign
 .check_FAT_size:
     test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
-    jnz ReadVbrData.error
+    jnz ReadVbrData.error_badfatfs
 .endp:
     __CDECL16_PROC_EXIT
     ret
-.error:
-    ERROR STEVIA_DEBUG_ERR
+.error_noactive:
+    ERROR STAGE2_ERROR_BAD_VBR
+.error_nosign:
+    ERROR STAGE2_ERROR_BAD_VBR
+.error_badfatfs:
+    ERROR STAGE2_ERROR_BAD_VBR
 
 ; set ds and es segments back to the base of the loader
 %ifnmacro __TINY_DS_ES

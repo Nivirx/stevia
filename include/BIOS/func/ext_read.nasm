@@ -94,7 +94,7 @@ read_disk_raw:
     %elifdef __STEVIA_VBR
     ERROR VBR_ERROR_DISK_READ_ERR
     %else
-    ERROR STAGE2_MBR_DISK_READ_ERROR
+    ERROR STAGE2_INT13_DISK_READ_ERR
     %endif
 .endf:
     __CDECL16_PROC_EXIT
