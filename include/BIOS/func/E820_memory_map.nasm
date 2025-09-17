@@ -33,35 +33,27 @@ struc AddressRangeDescStruct_t
     .ExtType        resd 1
 endstruc
 
+; !!! this procedure changes ES !!!
 ALIGN 4, db 0x90
 GetMemoryMap:
     __CDECL16_PROC_ENTRY
     push es         ; save segment register
 .func:
-    mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], 0
-
+    mov word [SteviaInfo + SteviaInfoStruct_t.u16_E820MMapEntryCount], 0
     
     xor ebx, ebx                            ; Continuation value, 0 for the first call
-
-    mov dx, BIOSMemoryMap
-    shr dx, 4
-    mov es, dx
-    xor di, di                              ; (BIOSMemoryMap >> 4):0 makes di an index into BIOSMemoryMap
-
+    mov di, BIOSMemoryMap                   ; destination is es:di, es should == ds
     mov ecx, AddressRangeDescStruct_t_size  ; hard request ACPI 3.0 table versions (24 bytes)
-    
 .loop_L1:
     mov eax, 0x0000E820                     ; select 0xE820 function
     mov edx, 0x534D4150                     ; 'SMAP' magic
     clc                                     ; clear carry
-    int 0x15
+    int 0x15                                ; data will be stored at es:di by e820 call
     jc GetMemoryMap.error
     cmp eax, 0x534D4150
     jne GetMemoryMap.no_smap_returned
 .no_error:
-    mov eax, dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
-    add eax, 1
-    mov dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries], eax
+    inc word [SteviaInfo + SteviaInfoStruct_t.u16_E820MMapEntryCount]
 
     cmp ecx, 20                             ; TODO: maybe this could be handled better than just panicing
     jb GetMemoryMap.nonstandard_e820        ; non-standard entry found 
@@ -89,7 +81,7 @@ GetMemoryMap:
 PrintMemoryMap:
     __CDECL16_PROC_ENTRY
 .func:
-    mov eax, dword [SteviaInfo + SteviaInfoStruct_t.MemoryMapEntries]
+    mov eax, dword [SteviaInfo + SteviaInfoStruct_t.u16_E820MMapEntryCount]
     cmp eax, 0
     je PrintMemoryMap.endp          ; if entries == 0, exit
 

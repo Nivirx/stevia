@@ -102,8 +102,10 @@ init:
 ; structures
 
 struc SteviaInfoStruct_t
-    .MemoryMapPtr      resd 1
-    .MemoryMapEntries  resd 1
+    .p16_E820MemoryMapPtr       resw 1
+    .u16_E820MMapEntryCount     resw 1
+    .p16_MbrPtr                 resw 1
+    .p16_VbrPtr                 resw 1
 endstruc
 
 struc EarlyBootStruct_t
@@ -130,20 +132,20 @@ main:
 
     __CDECL16_CALL_ARGS pszHelloPrompt
     __CDECL16_CALL PrintString, 1
-
+ 
     ; setup and store our vbr/mbr (e)bpb
     __CDECL16_CALL_ARGS 0x200, 0x10
     __CDECL16_CALL ArenaAlloc, 2
-    mov word [mbr_ptr], ax
+    mov word [SteviaInfo + SteviaInfoStruct_t.p16_MbrPtr], ax
 
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]                     
     push ax                                         ; boot_drive
-    __CDECL16_CALL ReadMbrData, 2                      ; fill mbr buffer
+    __CDECL16_CALL ReadMbrData, 2                   ; fill mbr buffer
 
     __CDECL16_CALL_ARGS 0x200, 0x10
     __CDECL16_CALL ArenaAlloc, 2
-    mov word [vbr_ptr], ax
+    mov word [SteviaInfo + SteviaInfoStruct_t.p16_VbrPtr], ax
 
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]
@@ -218,10 +220,6 @@ ReadMbrData:
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
     jne ReadMbrData.error
     ; TODO: this needs error checking, zero checking, check the sig a bunch of stuff...
-.update_globals:
-    mov ax, [bp + 6]
-    add ax, 0x1B8                           ; offset to start of PartTable
-    mov [part_table_ptr], ax
 .endp:
     __CDECL16_PROC_EXIT
     ret
@@ -233,19 +231,21 @@ ReadMbrData:
 ReadVbrData:
     __CDECL16_PROC_ENTRY
 .proc:
-    mov bx, word [part_table_ptr]           ; calculate offset; base pointer @ partition table
+    mov bx, SteviaInfo
+    mov ax, word [bx + SteviaInfoStruct_t.p16_MbrPtr]      
+    add ax, DISK_PARTITION_TABLE_OFFSET                           
+    mov bx, ax                              ; offset to part table
+
     mov cx, 4                               ; only checking 4 entries
     mov si, PartEntry_t.attributes
 .find_active_L0:
     mov al, byte [bx + si]
     test al, 0x80                           ; 0x80 == 1000_0000b
     je ReadVbrData.active_found
-    add si, 0x10                            ; add 16 bytes to offset (next part entry's attributes)
+    add bx, PartEntry_t_size                ; next part entry's attributes
     loop ReadVbrData.find_active_L0
     jmp ReadVbrData.error
 .active_found:
-    add bx, si                              ; update base to active part
-
     movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
     push 0x01                               ; count (2)
@@ -265,10 +265,6 @@ ReadVbrData:
 .check_FAT_size:
     test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
     jnz ReadVbrData.error
-.update_globals:
-    mov word [fat32_bpb_ptr], bx
-    add bx, FAT32_bpb_t_size                ; offset to ebpb
-    mov word [fat32_ebpb_ptr], bx
 .endp:
     __CDECL16_PROC_EXIT
     ret
@@ -510,72 +506,22 @@ align 16, resb 1
 section .bss follows=.sign
 begin_bss:
 
-align 4, resb 1
-mbr_ptr:
-    resw 1
-
-align 4, resb 1
-vbr_ptr:
-    resw 1
-
-align 4, resb 1
-part_table_ptr:
-    resw 1
-
-align 4, resb 1
-fat32_bpb_ptr:
-    resw 1
-
-align 4, resb 1
-fat32_ebpb_ptr:
-    resw 1
-
 ; structures
 align 16, resb 1
-partition_table: 
-    resb PartTable_t_size
+SteviaInfo:
+    resd SteviaInfoStruct_t_size
 
 align 16, resb 1
-fat32_bpb: 
-    resb FAT32_bpb_t_size
-fat32_ebpb: 
-    resb FAT32_ebpb_t_size
-
-align 16, resb 1
-fat32_nc_data: 
-    resb 16
+early_heap_state:
+    resb ArenaStateStruc_t_size
 
 align 16, resb 1
 lba_packet: 
     resb LBAPkt_t_size
 
-align 16, resb 1
-fat32_state:
-    resb FAT32_State_t_size
-
-align 16, resb 1
-SteviaInfo:
-    resd 4
-
-align 16, resb 1
-early_heap_state:
-    resb ArenaStateStruc_t_size
-;
-; post-bss init globals
-;
-
 ;
 ; large continuous allocations
 ;
-align 16, resb 1
-disk_buffer:
-    resb 512
-fat_buffer:
-    resb 512
-dir_buffer:
-    resb 512
-fat_fsinfo:
-    resb 512
 
 ; TODO: this will hold 42 entries from the map function
 ; the e820 function needs to check that it doesn't overflow
@@ -593,7 +539,7 @@ end_bss:
 
 ; Pad to the cap (emits nothing in the file; only increases .bss virtual size).
 ; If BSS_SIZE > BSS_MAX_BYTES, this becomes negative and NASM errors out.
-%define BSS_MAX_BYTES 0x3000
+%define BSS_MAX_BYTES 0x2000
 resb (BSS_MAX_BYTES - (end_bss - begin_bss))
 
 ; Optional: keep a label for later math:
