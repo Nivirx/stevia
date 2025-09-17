@@ -109,7 +109,7 @@ main:
         mov al, byte [bx + PartEntry_t.attributes]
         test al, 0x80                           ; 0x80 == 1000_0000b
         jnz main.active_found
-        add bx, 0x10                            ; add 16 bytes to offset
+        add bx, PartEntry_t_size                ; add 16 bytes to offset
         loop main.find_active_L0
 
         ERROR MBR_ERROR_NO_NO_BOOT_PART
