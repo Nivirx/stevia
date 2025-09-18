@@ -453,17 +453,19 @@ align 16, resb 1
 %define BIOSMemoryMap_SIZE 1024
 BIOSMemoryMap:
     resb BIOSMemoryMap_SIZE
-
-align 16, resb 1
-stack_bottom:
-    resb 2048
-stack_top:
 end_bss:
+; !!! End bss data !!!
+%define STACK_SIZE 0x1000       ; 4 KiB
 
 ; Pad to the cap (emits nothing in the file; only increases .bss virtual size).
 ; If BSS_SIZE > BSS_MAX_BYTES, this becomes negative and NASM errors out.
-%define BSS_MAX_BYTES 0x2000
+%define BSS_MAX_BYTES (0x2000 - STACK_SIZE)
 resb (BSS_MAX_BYTES - (end_bss - begin_bss))
+
+align 16, resb 1
+stack_bottom:
+    resb STACK_SIZE
+stack_top:
 
 ; Optional: keep a label for later math:
 bss_cap_end:
