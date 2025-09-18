@@ -230,17 +230,27 @@ ReadVbrData:
     mov ax, word [bx + SteviaInfoStruct_t.p16_MbrPtr]      
     add ax, DISK_PARTITION_TABLE_OFFSET                           
     mov bx, ax                              ; offset to part table
-
     mov cx, 4                               ; only checking 4 entries
-    mov si, PartEntry_t.attributes
+
 .find_active_L0:
-    mov al, byte [bx + si]
-    test al, 0x80                           ; 0x80 == 1000_0000b
-    je ReadVbrData.active_found
+    mov al, [bx + PartEntry_t.attributes]
+    cmp al, 0x80                            ; 0x80 == 1000_0000b
+    je ReadVbrData.check_fstype
     add bx, PartEntry_t_size                ; next part entry's attributes
     loop ReadVbrData.find_active_L0
     jmp ReadVbrData.error_noactive
-.active_found:
+.check_fstype:
+    ; check for part_type = 0x0C (DOS 7.1+/W95 FAT32 w/ LBA) or 0x1C (Hidden 0x0C)
+    __BOCHS_MAGIC_DEBUG
+    mov al, [bx + PartEntry_t.part_type]
+    cmp al, 0x0C
+    je ReadVbrData.active_ok
+    ; *or*
+    cmp al, 0x1C
+    je ReadVbrData.active_ok
+
+    jmp ReadVbrData.error_badparttype        ; error if part_type != 0x1C or 0x0C
+.active_ok:
     movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
     push 0x01                               ; count (2)
@@ -259,23 +269,31 @@ ReadVbrData:
     jne ReadVbrData.error_nosign
 .check_FAT_sanity:
     ; we only quickly validate that this is *probably* a FAT32 volume
-    test word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotalSectors16 should be 0 (use TotalSectors32 in bpb)
-    jnz ReadVbrData.error_badfatfs
 
-    test word [bx + FAT32_bpb_t.u16_FATSize16], 0           ; FatSize16 will be 0 if FAT32 (use FATSize32 in ebpb)
-    jnz ReadVbrData.error_badfatfs
+    add bx, 11                                             ; point bx at start of bpb (skip jmp code and ident)
+    cmp word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotalSectors16 should be 0 (use TotalSectors32 in bpb)
+    jne ReadVbrData.error_totsectors
 
-    test word [bx + FAT32_bpb_t.u16_RootEntryCount16], 0    ; root dir info is in data clusters on fat32
-    jnz ReadVbrData.error_badfatfs
+    cmp word [bx + FAT32_bpb_t.u16_FATSize16], 0           ; FatSize16 will be 0 if FAT32 (use FATSize32 in ebpb)
+    jne ReadVbrData.error_fatsz
+
+    cmp word [bx + FAT32_bpb_t.u16_RootEntryCount16], 0    ; root dir info is in data clusters on fat32
+    jne ReadVbrData.error_rootdir
 .endp:
     __CDECL16_PROC_EXIT
     ret
 .error_noactive:
-    ERROR STAGE2_ERROR_BAD_VBR
+    ERROR STAGE2_VBR_E_ACTIVE
 .error_nosign:
-    ERROR STAGE2_ERROR_BAD_VBR
-.error_badfatfs:
-    ERROR STAGE2_ERROR_BAD_VBR
+    ERROR STAGE2_VBR_E_SIGN
+.error_totsectors:
+    ERROR STAGE2_VBR_E_TOT
+.error_fatsz:
+    ERROR STAGE2_VBR_E_FATSZ
+.error_rootdir:
+    ERROR STAGE2_VBR_E_DIRENT
+.error_badparttype:
+    ERROR STAGE2_VBR_E_PARTTYPE
 
 ; set ds and es segments back to the base of the loader
 %ifnmacro __TINY_DS_ES

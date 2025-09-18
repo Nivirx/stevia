@@ -15,8 +15,7 @@
 
 %ifndef __INC_ERROR_CODES
 
-; Errors
-; 12 Errors, 5 in use
+; MBR Error codes
 %define MBR_ERROR_DISK_T_ERR         'a'
 %define MBR_ERROR_NO_INT32E          'b'
 %define MBR_ERROR_NO_NO_BOOT_PART    'c'
@@ -30,7 +29,7 @@
 %define MBR_ERROR_RESERVED_k         'k'
 %define MBR_ERROR_INT13h_EREAD_ERR   'l'
 
-; 12 Error
+; VBR Error codes
 %define VBR_ERROR_WRONG_FAT_SIZE     'm'
 %define VBR_ERROR_NO_SIGNATURE       'n'
 %define VBR_ERROR_DISK_READ_ERR      'o'
@@ -44,7 +43,7 @@
 %define VBR_ERROR_RESERVED_w         'w'
 %define VBR_ERROR_RESERVED_x         'x'
 
-; 22 errors, 8 in use
+; Stage2 Error codes
 %define STAGE2_A20_FAILED            'A'
 %define STAGE2_SIGNATURE_MISSING     'B'
 %define STAGE2_MM_E820_NO_SUPPORT    'C'
@@ -60,19 +59,19 @@
 %define STAGE2_FAT32_E_UNSUPPORTED   'M'
 %define STAGE2_FAT32_E_UNIMPLEMENTED 'N'
 %define STAGE2_ERROR_BAD_MBR         'O'
-%define STAGE2_ERROR_BAD_VBR         'P'
-%define STAGE2_ERROR_RESERVED_Q      'Q'
-%define STAGE2_ERROR_RESERVED_R      'R'
-%define STAGE2_ERROR_RESERVED_S      'S'
-%define STAGE2_ERROR_RESERVED_T      'T'
-%define STAGE2_ERROR_RESERVED_U      'U'
-%define STAGE2_ERROR_RESERVED_V      'V'
+%define STAGE2_VBR_E_ACTIVE          'P'
+%define STAGE2_VBR_E_SIGN            'Q'
+%define STAGE2_VBR_E_TOT             'R'
+%define STAGE2_VBR_E_FATSZ           'S'
+%define STAGE2_VBR_E_DIRENT          'T'
+%define STAGE2_VBR_E_PARTTYPE        'U'
+%define STAGE2_RESERVED_E_V          'V'
 
-; for development only, specific errors should be above.
-%define STEVIA_DEBUG_OK      'W'
-%define STEVIA_DEBUG_ERR      'X'
-%define STEVIA_DEBUG_UNIMPLEMENTED      'Y'
-%define STEVIA_DEBUG_HALT      'Z'
+; Debug error codes
+%define STEVIA_DEBUG_OK              'W'
+%define STEVIA_DEBUG_ERR             'X'
+%define STEVIA_DEBUG_UNIMPLEMENTED   'Y'
+%define STEVIA_DEBUG_HALT            'Z'
 
 %endif
 %define __INC_ERROR_CODES
