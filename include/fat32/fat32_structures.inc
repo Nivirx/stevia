@@ -58,20 +58,20 @@
 ;                           resulting in a value which does not fit in the Number of Sectors entry at 0x13. 
 
 struc FAT32_bpb_t
-    .reserved_jmpboot               resb 3
-    .ident                          resb 8
-    .bytes_per_sector_word          resb 2
-    .sectors_per_cluster_byte       resb 1
-    .reserved_sectors_word          resb 2
-    .fat_count_byte                 resb 1
-    .unused1_ZERO_word              resb 2      ; Root entry count field, 0 on fat32
-    .unused2_ZERO_word              resb 2      ; total sectors size 16, 0 on fat32
-    .media_desc_byte                resb 1
-    .unused3_ZERO_word              resb 2      ; FAT size 16, 0 on fat32
-    .sectors_per_track_word         resb 2
-    .head_count_word                resb 2
-    .hidden_sectors_dword           resb 4
-    .total_sectors_dword            resb 4
+    .reserved_jmpboot        resb 3
+    .u16_BytesPerSector      resw 1
+    .ident                   resb 8
+    .u8_SectorsPerCluster    resb 1
+    .u16_ReservedSectors     resw 1
+    .u8_FatCount             resb 1
+    .u16_unused1_ZERO        resb 2      ; Root entry count field, 0 on fat32
+    .u16_unused2_ZERO        resb 2      ; total sectors size 16, 0 on fat32
+    .u8_MediaDesc            resb 1
+    .u16_unused3_ZERO        resb 2      ; FAT size 16, 0 on fat32
+    .u16_SectorsPerTrack     resw 1
+    .u16_HeadCount           resw 1
+    .u32_HiddenSectors       resd 1
+    .u32_TotalSectors        resd 1
 endstruc
 
 ; EBPB Information (FAT32)
@@ -91,19 +91,19 @@ endstruc
 ;   8 	System identifier string. Always "FAT32   ". The spec says never to trust the contents of this string for any use.
 
 struc FAT32_ebpb_t
-    .FATSz_dword                resb 4
-    .extflags_word              resb 2
-    .FSVersion_word             resb 2
-    .root_clus_dword            resb 4
-    .FSInfo_word                resb 2
-    .BkBootSec_word             resb 2
-    .reserved1                  resb 12
-    .drive_number_byte          resb 1
-    .nt_flags_byte              resb 1
-    .signature_byte             resb 1
-    .volume_id_dword            resb 4
-    .volume_label_bytea         resb 11
-    .system_ident_bytea         resb 8
+    .u32_FATSz             resb 4      ; size of *each* fat in sectors, total = FATSz * (# of FATs)
+    .u16_ExtFlags          resb 2
+    .u16_FSVersion         resb 2
+    .u32_RootDirCluster    resb 4
+    .u16_FSInfoSector      resb 2
+    .u16_BkBootSector      resb 2
+    .reserved1             resb 12
+    .u8_DriveNumber        resb 1
+    .u8_NtFlags            resb 1
+    .u8_Signature          resb 1
+    .u32_VolumeId          resb 4
+    .volume_label          resb 11
+    .system_ident          resb 8      ; Should always be 'FAT32   '
 endstruc
 
 ; ## Standard 8.3 structure ###
