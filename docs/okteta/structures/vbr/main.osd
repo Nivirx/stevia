@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+  <struct name="VBR">
+    <!-- 3 bytes: jmp over bpb code -->
+    <array name="jmpcode" length="3">
+      <primitive name="opcode" type="UInt8"/>
+    </array>
+
+    <array name="bs_ident" length="8">
+      <primitive type="Char"/>
+    </array>
+
+    <struct name="FAT32_bpb">
+      <primitive name="BytesPerSector" type="UInt16"/>
+      <primitive name="SectorsPerCluster" type="UInt8"/>
+      <primitive name="ReservedSectors" type="UInt16"/>
+      <primitive name="FatCount" type="UInt8"/>
+      <primitive name="RootEntryCount16" type="UInt16"/>
+      <primitive name="TotalSectors16" type="UInt16"/>
+      <primitive name="MediaDesc" type="UInt8"/>
+      <primitive name="FATSize16" type="UInt16"/>
+      <primitive name="SectorsPerTrack" type="UInt16"/>
+      <primitive name="HeadCount" type="UInt16"/>
+      <primitive name="HiddenSectors" type="UInt32"/>
+      <primitive name="TotalSectors32" type="UInt32"/>
+    </struct>
+
+    <struct name="FAT32_ebpb">
+      <primitive name="FATSize32" type="UInt32"/>
+      <primitive name="ExtFlags" type="UInt16"/>
+      <primitive name="FSVersion" type="UInt16"/>
+      <primitive name="RootDirCluster" type="UInt32"/>
+      <primitive name="FSInfoSector" type="UInt16"/>
+      <primitive name="BkBootSector" type="UInt16"/>
+      <array name="reserved0" length="12">
+        <primitive type="uint8"/>
+      </array>
+      <primitive name="DriveNumber" type="UInt8"/>
+      <primitive name="NtFlags" type="UInt8"/>
+      <primitive name="Signature" type="UInt8"/>
+      <primitive name="VolumeId" type="UInt32"/>
+      <array name="VolumeLabel" length="11">
+        <primitive type="Char"/>
+      </array>
+      <array name="FilesystemIdent" length="8">
+        <primitive type="Char"/>
+      </array>
+    </struct>
+
+    <array name="BootCode" length="420">
+      <primitive type="UInt8"/>
+    </array>
+
+    <!-- Signature 0xAA55 -->
+    <primitive name="signature" type="UInt16"/>
+  </struct>
+</data>

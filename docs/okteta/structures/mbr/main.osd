@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+  <struct name="MBR">
+    <!-- 446 bytes: bootstrap code -->
+    <array name="bootCode" length="446">
+      <primitive type="UInt8"/>
+    </array>
+
+    <!-- 4 x 16-byte partition entries -->
+    <array name="partitions" length="4">
+      <struct name="PartitionEntry">
+        <primitive name="status" type="UInt8"/>         <!-- 0x80=bootable -->
+        <array name="chsFirst" length="3"><primitive type="UInt8"/></array>
+        <primitive name="type" type="UInt8"/>
+        <array name="chsLast" length="3"><primitive type="UInt8"/></array>
+        <primitive name="lbaStart" type="UInt32"/>
+        <primitive name="lbaSectors" type="UInt32"/>
+      </struct>
+    </array>
+
+    <!-- Signature 0x55AA (little-endian UInt16 == 0xAA55 on disk) -->
+    <primitive name="signature" type="UInt16"/>
+  </struct>
+</data>
