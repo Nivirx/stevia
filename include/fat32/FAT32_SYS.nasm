@@ -16,7 +16,6 @@
 %ifndef __INC_FAT32_SYS
 
 %include "partition_table.inc"
-%include "fat32/bpb_offset_bx.inc"
 %include "fat32/fat32_structures.inc"
 
 ; int read_mbr(int boot_drive, void* dst)
@@ -38,7 +37,7 @@ FAT32_load_mbr:
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadMbrData.error_nosign
+    jne .error_nosign
     ; TODO: this needs more error checking, zero checking, check the sig a bunch of stuff...
 .endp:
     __CDECL16_PROC_EXIT
@@ -61,21 +60,21 @@ FAT32_load_vbr:
 .find_active_L0:
     mov al, [bx + PartEntry_t.attributes]
     cmp al, 0x80                            ; 0x80 == 1000_0000b
-    je ReadVbrData.check_fstype
+    je .check_fstype
     add bx, PartEntry_t_size                ; next part entry's attributes
-    loop ReadVbrData.find_active_L0
-    jmp ReadVbrData.error_noactive
+    loop .find_active_L0
+    jmp .error_noactive
 .check_fstype:
     ; check for part_type = 0x0C (DOS 7.1+/W95 FAT32 w/ LBA) or 0x1C (Hidden 0x0C)
     __BOCHS_MAGIC_DEBUG
     mov al, [bx + PartEntry_t.part_type]
     cmp al, 0x0C
-    je ReadVbrData.active_ok
+    je .active_ok
     ; *or*
     cmp al, 0x1C
-    je ReadVbrData.active_ok
+    je .active_ok
 
-    jmp ReadVbrData.error_badparttype        ; error if part_type != 0x1C or 0x0C
+    jmp .error_badparttype        ; error if part_type != 0x1C or 0x0C
 .active_ok:
     movzx ax, byte [bp + 4]
     push ax                                 ; drive_num (2)
@@ -92,19 +91,19 @@ FAT32_load_vbr:
 .check_sig:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadVbrData.error_nosign
+    jne .error_nosign
 .check_FAT_sanity:
     ; we only quickly validate that this is *probably* a FAT32 volume
 
     add bx, 11                                             ; point bx at start of bpb (skip jmp code and ident)
     cmp word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotalSectors16 should be 0 (use TotalSectors32 in bpb)
-    jne ReadVbrData.error_totsectors
+    jne .error_totsectors
 
     cmp word [bx + FAT32_bpb_t.u16_FATSize16], 0           ; FatSize16 will be 0 if FAT32 (use FATSize32 in ebpb)
-    jne ReadVbrData.error_fatsz
+    jne .error_fatsz
 
     cmp word [bx + FAT32_bpb_t.u16_RootEntryCount16], 0    ; root dir info is in data clusters on fat32
-    jne ReadVbrData.error_rootdir
+    jne .error_rootdir
 .endp:
     __CDECL16_PROC_EXIT
     ret

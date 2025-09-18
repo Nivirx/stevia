@@ -91,7 +91,7 @@ init:
 
 %include "partition_table.inc"
 %include "fat32/fat32_structures.inc"
-;%include 'fat32/FAT32_SYS.inc'
+%include 'fat32/FAT32_SYS.nasm'
 
 ; ###############
 ; BIOS functions
@@ -135,7 +135,7 @@ main:
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]                     
     push ax                                         ; boot_drive
-    __CDECL16_CALL ReadMbrData, 2                   ; fill mbr buffer
+    __CDECL16_CALL FAT32_load_mbr, 2                ; fill/validate mbr buffer
 
     ; setup heap space for vbr data
     __CDECL16_CALL_ARGS 0x200, 0x10
@@ -145,7 +145,7 @@ main:
     push ax                                         ; dst
     movzx ax, byte [u8_BootDrive]
     push ax                                         ; boot_drive
-    __CDECL16_CALL ReadVbrData, 2                   ; fill vbr buffer
+    __CDECL16_CALL FAT32_load_vbr, 2                ; fill/validate vbr buffer
 
     ; enable A20 gate
     call EnableA20
@@ -193,107 +193,6 @@ hcf:
 ; SYSTEM CONFIGURATION FUNCTIONS & MACROS
 ;
 ; ##############################
-
-; int read_mbr(int boot_drive, void* dst)
-; destination buffer needs 512 bytes of space
-ReadMbrData:
-    __CDECL16_PROC_ENTRY
-.proc:
-    ; read mbr on boot drive to memory (for the partition table)
-    movzx ax, byte [bp + 4]
-    push ax                                 ; drive_num (2)
-    push 0x01                               ; count (2)
-
-    push dword 0x0                          ; lba (4)
-
-    push word [bp + 6]                      ; offset = dst
-    push __STAGE2_SEGMENT                   ; this segment 
-    call BIOS_int13h_ext_read
-    add sp, 0xC
-.check_sig:
-    mov bx, [bp + 6]
-    cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadMbrData.error_nosign
-    ; TODO: this needs more error checking, zero checking, check the sig a bunch of stuff...
-.endp:
-    __CDECL16_PROC_EXIT
-    ret
-.error_nosign:
-    ERROR STAGE2_ERROR_BAD_MBR
-
-; int read_vbr(int boot_drive, void* buf)
-; read vbr on boot partition to memory (for fat bpb/ebpb)
-ReadVbrData:
-    __CDECL16_PROC_ENTRY
-.proc:
-    mov bx, SteviaInfo
-    mov ax, word [bx + SteviaInfoStruct_t.p16_MbrPtr]      
-    add ax, DISK_PARTITION_TABLE_OFFSET                           
-    mov bx, ax                              ; offset to part table
-    mov cx, 4                               ; only checking 4 entries
-
-.find_active_L0:
-    mov al, [bx + PartEntry_t.attributes]
-    cmp al, 0x80                            ; 0x80 == 1000_0000b
-    je ReadVbrData.check_fstype
-    add bx, PartEntry_t_size                ; next part entry's attributes
-    loop ReadVbrData.find_active_L0
-    jmp ReadVbrData.error_noactive
-.check_fstype:
-    ; check for part_type = 0x0C (DOS 7.1+/W95 FAT32 w/ LBA) or 0x1C (Hidden 0x0C)
-    __BOCHS_MAGIC_DEBUG
-    mov al, [bx + PartEntry_t.part_type]
-    cmp al, 0x0C
-    je ReadVbrData.active_ok
-    ; *or*
-    cmp al, 0x1C
-    je ReadVbrData.active_ok
-
-    jmp ReadVbrData.error_badparttype        ; error if part_type != 0x1C or 0x0C
-.active_ok:
-    movzx ax, byte [bp + 4]
-    push ax                                 ; drive_num (2)
-    push 0x01                               ; count (2)
-
-    mov eax, dword [bx + PartEntry_t.lba_start]
-    push dword eax                          ; lba (4)
-
-    push word [bp + 6]                      ; offset = dst
-    push __STAGE2_SEGMENT                   ; this segment 
-    call BIOS_int13h_ext_read
-    add sp, 0xC
-    ; vbr (with fat bpb/ebpb) is at the buffer now
-.check_sig:
-    mov bx, [bp + 6]
-    cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
-    jne ReadVbrData.error_nosign
-.check_FAT_sanity:
-    ; we only quickly validate that this is *probably* a FAT32 volume
-
-    add bx, 11                                             ; point bx at start of bpb (skip jmp code and ident)
-    cmp word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotalSectors16 should be 0 (use TotalSectors32 in bpb)
-    jne ReadVbrData.error_totsectors
-
-    cmp word [bx + FAT32_bpb_t.u16_FATSize16], 0           ; FatSize16 will be 0 if FAT32 (use FATSize32 in ebpb)
-    jne ReadVbrData.error_fatsz
-
-    cmp word [bx + FAT32_bpb_t.u16_RootEntryCount16], 0    ; root dir info is in data clusters on fat32
-    jne ReadVbrData.error_rootdir
-.endp:
-    __CDECL16_PROC_EXIT
-    ret
-.error_noactive:
-    ERROR STAGE2_VBR_E_ACTIVE
-.error_nosign:
-    ERROR STAGE2_VBR_E_SIGN
-.error_totsectors:
-    ERROR STAGE2_VBR_E_TOT
-.error_fatsz:
-    ERROR STAGE2_VBR_E_FATSZ
-.error_rootdir:
-    ERROR STAGE2_VBR_E_DIRENT
-.error_badparttype:
-    ERROR STAGE2_VBR_E_PARTTYPE
 
 ; set ds and es segments back to the base of the loader
 %ifnmacro __TINY_DS_ES
