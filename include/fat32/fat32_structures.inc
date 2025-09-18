@@ -65,11 +65,11 @@ struc FAT32_bpb_t
     .u16_RootEntryCount16    resw 1      ; Root dir entry count field, 0 on fat32
     .u16_TotalSectors16      resw 1      ; total number of sectors size, 0 on fat32
     .u8_MediaDesc            resb 1
-    .u16_FatSize16           resw 1      ; FAT size 16, 0 on fat32
+    .u16_FATSize16           resw 1      ; FAT size 16, 0 on fat32
     .u16_SectorsPerTrack     resw 1
     .u16_HeadCount           resw 1
     .u32_HiddenSectors       resd 1
-    .u32_TotalSectors        resd 1
+    .u32_TotalSectors32      resd 1
 endstruc
 
 ; EBPB Information (FAT32)
@@ -89,7 +89,7 @@ endstruc
 ;   8 	System identifier string. Always "FAT32   ". The spec says never to trust the contents of this string for any use.
 
 struc FAT32_ebpb_t
-    .u32_FATSz             resd 1      ; size of *each* fat in sectors, total = FATSz * (# of FATs)
+    .u32_FATSize32         resd 1      ; size of *each* fat in sectors, total = FATSz * (# of FATs)
     .u16_ExtFlags          resw 1
     .u16_FSVersion         resw 1
     .u32_RootDirCluster    resd 1

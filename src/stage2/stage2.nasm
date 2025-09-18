@@ -257,8 +257,15 @@ ReadVbrData:
     mov bx, [bp + 6]
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
     jne ReadVbrData.error_nosign
-.check_FAT_size:
-    test word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotSectors16 will not be set if FAT32
+.check_FAT_sanity:
+    ; we only quickly validate that this is *probably* a FAT32 volume
+    test word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotalSectors16 should be 0 (use TotalSectors32 in bpb)
+    jnz ReadVbrData.error_badfatfs
+
+    test word [bx + FAT32_bpb_t.u16_FATSize16], 0           ; FatSize16 will be 0 if FAT32 (use FATSize32 in ebpb)
+    jnz ReadVbrData.error_badfatfs
+
+    test word [bx + FAT32_bpb_t.u16_RootEntryCount16], 0    ; root dir info is in data clusters on fat32
     jnz ReadVbrData.error_badfatfs
 .endp:
     __CDECL16_PROC_EXIT
