@@ -19,6 +19,65 @@
 %include "fat32/bpb_offset_bx.inc"
 %include "fat32/fat32_structures.inc"
 
+
+; what a 'mount' should probably do at this point...
+; - read VBR at partition_lba
+; - validate FAT32 signatures
+; - fill fat32_bpb_t and compute derived fields
+; - read FSInfo (free count/next free)
+; - ???
+; int fat32_mount(uint32_t partition_lba, fat32_bpb_t* out);
+FAT32_mountfs:
+    __CDECL16_PROC_ENTRY
+.proc:
+    ; mount: parse BPB, derive fat0_lba, data_lba, cluster0_lba.
+.endp:
+    __CDECL16_PROC_EXIT
+    ret
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
+
+; int fat32_read_fat(const fat32_bpb_t* v, uint32_t clus, uint32_t* out);
+FAT32_read_fat:
+    __CDECL16_PROC_ENTRY
+.proc:
+    ; Read 32-bit FAT entry for cluster n
+.endp:
+    __CDECL16_PROC_EXIT
+    ret
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
+; FAT32 entry is 32-bits; only low 28 bits are meaningful.
+;   EOC if (val & 0x0FFFFFFF) >= 0x0FFFFFF8.
+;   bad if == 0x0FFFFFF7.
+;   free if == 0x00000000.
+; int fat32_next_clus(const fat32_bpb_t* v, uint32_t clus, uint32_t* out_next);
+FAT32_next_cluster:
+    __CDECL16_PROC_ENTRY
+.proc:
+    ; Walk to next cluster in chain (validates EOC/bad)
+.endp:
+    __CDECL16_PROC_EXIT
+    ret
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
+; e.g:
+; uint64_t clus_to_lba(const fat32_bpb_t* v, uint32_t clus) {
+;  return v->data_lba + (uint64_t)(clus - 2) * v->secs_per_clus;
+; }
+FAT32_clus_to_lba:
+    __CDECL16_PROC_ENTRY
+.proc:
+    ; Convert cluster -> LBA of first sector of that cluster
+.endp:
+    __CDECL16_PROC_EXIT
+    ret
+.error:
+    ERROR STEVIA_DEBUG_ERR
+
 ; Prototyping for now...
 
 ; TODO:
@@ -59,35 +118,6 @@
 ; int cache_read_sector(uint64_t lba, void* dst);   
 ; int cache_invalidate_all(void);
 
-; what a 'mount' should probably do at this point...
-; - read VBR at partition_lba
-; - validate FAT32 signatures
-; - fill fat32_bpb_t and compute derived fields
-; - read FSInfo (free count/next free)
-; - ???
-; int fat32_mount(uint32_t partition_lba, fat32_bpb_t* out);
-
-
-;
-; Accessors
-;
-
-; // Convert cluster -> LBA of first sector of that cluster
-; uint64_t clus_to_lba(const fat32_bpb_t* v, uint32_t clus) {
-;  return v->data_lba + (uint64_t)(clus - 2) * v->secs_per_clus;
-; }
-
-; FAT32 entry is 32-bits; only low 28 bits are meaningful.
-;   EOC if (val & 0x0FFFFFFF) >= 0x0FFFFFF8.
-;   bad if == 0x0FFFFFF7.
-;   free if == 0x00000000.
-
-; // Read 32-bit FAT entry for cluster n
-; int fat32_read_fat(const fat32_bpb_t* v, uint32_t clus, uint32_t* out);
-
-; // Walk to next cluster in chain (validates EOC/bad)
-; int fat32_next_clus(const fat32_bpb_t* v, uint32_t clus, uint32_t* out_next);
-
 ;
 ; SFN directories
 ;
@@ -108,7 +138,6 @@
 ;int fat32_dir_iter_open_root(fat32_bpb_t* v, fat32_dir_iter_t* it);
 ;int fat32_dir_iter_open(fat32_bpb_t* v, uint32_t first_clus, fat32_dir_iter_t* it);
 ;int fat32_dir_iter_next(fat32_dir_iter_t* it, fat32_dirent_sfn_t* out); // FS_OK or FS_E_END
-
 
 ; typedef struct {
 ;   uint32_t first_clus;
