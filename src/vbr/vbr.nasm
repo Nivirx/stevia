@@ -21,15 +21,21 @@
 %define __STEVIA_VBR
 section .text
 __ENTRY:
-phy_bpb_start:
+    ; try to force encode a short jmp nop: i.e 0xEB 0x5A 0x90
+    ; will jump right 0x5A (90 bytes) after the end of the ebpb
+    ; this could also be encoded as 0xE9 0x?? 0x?? for a near jump
+    ; if init ends up being >= 128 bytes from entry.
     jmp short (init - $$)
     nop
 
-; fill BPB area with 0x00 since we skip writing this part to disk
-; but we need it for the 'jmp short entry; nop' above
-times 33 db 0x00
+; 8 ascii bytes, "MSWIN 4.1", ""
+phy_bs_ident:
+times 8 db 0x00
+
+phy_bpb_start:
+times 25 db 0x00
+
 phy_ebpb_start:
-; fill eBPB area with 0x00 since we skip writing this part to disk
 times 54 db 0x00
 
 ; ###############
@@ -95,7 +101,7 @@ main:
     mov byte [bp - 2], dl                                  ; boot_drive
 .check_FAT_size:                                           ; we only support a very specific setup of FAT32
     mov bx, phy_bpb_start
-    test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
+    test word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotSectors16 will not be set if FAT32
     jz main.load_stage2
     ERROR VBR_ERROR_WRONG_FAT_SIZE
 .load_stage2:

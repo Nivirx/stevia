@@ -258,7 +258,7 @@ ReadVbrData:
     cmp word [bx + 0x1FE], 0xAA55           ; check for bytes at end
     jne ReadVbrData.error_nosign
 .check_FAT_size:
-    test word [bx + FAT32_bpb_t.unused2_ZERO_word], 0      ; TotSectors16 will not be set if FAT32
+    test word [bx + FAT32_bpb_t.u16_TotalSectors16], 0      ; TotSectors16 will not be set if FAT32
     jnz ReadVbrData.error_badfatfs
 .endp:
     __CDECL16_PROC_EXIT
