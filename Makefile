@@ -38,9 +38,6 @@ QEMU_ARGS := \
     -device e1000,netdev=n0,mac=52:54:00:12:34:56 \
     -netdev user,id=n0 \
     -device piix3-usb-uhci \
-    -device usb-ohci,id=ohci0 \
-    -device usb-ehci,id=ehci0 \
-    -device pcspk \
     -parallel null \
     -serial null -serial none -serial none -serial none \
     -chardev file,id=dbg,path=bochs-e9.log,append=on \
