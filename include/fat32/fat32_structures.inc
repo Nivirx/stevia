@@ -195,20 +195,11 @@ endstruc
 
 ; 32 bytes
 struc FAT32_State_t
-    .first_data_sector_32     resd 1
-    .first_fat_sector_32      resd 1
-    .fat_size_32              resd 1
-    .curr_FAT_cluster_32      resd 1
-    .curr_dir_cluster_32      resd 1
-    .curr_drive_lba_32        resd 1
-endstruc
-
-; 16 bytes
-struc FAT32_NextClusterData_t
-    .fat_offset               resd 1
-    .fat_sector               resd 1
-    .entry_offset             resd 1
-    .reserved_1               resd 1
+    .u32_TotalClusters        resd 1
+    .u32_DataAreaStartSector  resd 1
+    .u32_FATAreaStartSector   resd 1
+    .p16_FATBuffer            resw 1
+    .p16_ClustBuffer          resw 1
 endstruc
 
 ; FAT32 Attributes

@@ -126,11 +126,12 @@ FAT32_load_vbr:
 ; - fill fat32_bpb_t and compute derived fields
 ; - read FSInfo (free count/next free)
 ; - ???
-; int fat32_mount(uint32_t partition_lba, fat32_bpb_t* out);
+; int fat32_mount(FAT32_State_t* state, uint32_t partition_lba);
 FAT32_mountfs:
     __CDECL16_PROC_ENTRY
 .proc:
     ; mount: parse BPB, derive fat0_lba, data_lba, cluster0_lba.
+
 .endp:
     __CDECL16_PROC_EXIT
     ret
@@ -138,7 +139,7 @@ FAT32_mountfs:
     ERROR STEVIA_DEBUG_ERR
 
 
-; int fat32_read_fat(const fat32_bpb_t* v, uint32_t clus, uint32_t* out);
+; int fat32_read_fat(FAT32_State_t* state, uint32_t clus, uint32_t* out);
 FAT32_read_fat:
     __CDECL16_PROC_ENTRY
 .proc:
@@ -153,7 +154,7 @@ FAT32_read_fat:
 ;   EOC if (val & 0x0FFFFFFF) >= 0x0FFFFFF8.
 ;   bad if == 0x0FFFFFF7.
 ;   free if == 0x00000000.
-; int fat32_next_clus(const fat32_bpb_t* v, uint32_t clus, uint32_t* out_next);
+; int fat32_next_clus(FAT32_State_t* state, uint32_t clus, uint32_t* out_next);
 FAT32_next_cluster:
     __CDECL16_PROC_ENTRY
 .proc:
@@ -165,7 +166,7 @@ FAT32_next_cluster:
     ERROR STEVIA_DEBUG_ERR
 
 ; e.g:
-; uint64_t clus_to_lba(const fat32_bpb_t* v, uint32_t clus) {
+; uint64_t clus_to_lba(FAT32_State_t* state, uint32_t clus) {
 ;  return v->data_lba + (uint64_t)(clus - 2) * v->secs_per_clus;
 ; }
 FAT32_clus_to_lba:
